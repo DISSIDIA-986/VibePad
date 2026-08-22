@@ -2,6 +2,17 @@
 
 All notable changes to VibePad are documented here.
 
+## [0.1.2] — 2026-08-22
+
+### Added
+
+- **macOS app icon** — `AppIcon.icns` bundled in `VibePad.app`; source PNG at `config/VibePadApp/icon-1024.png`.
+- `bin/build-icon.sh` — regenerate icns from 1024×1024 PNG.
+
+### Changed
+
+- **README** rewritten for accuracy (full mapping table, architecture, limitations, LinkedIn-ready use case).
+
 ## [0.1.1] — 2026-08-22
 
 ### What you can do now
@@ -41,7 +52,7 @@ All notable changes to VibePad are documented here.
 
 - GameController does not see the controller in CLI; spike (Python SDL) is the production stack until in-app GC is verified.
 - Config YAML missing d-pad / Menu / LB entries (spike-only for now).
-- Config YAML missing d-pad / Menu / LB entries (spike-only for now).
 
+[0.1.2]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.2
 [0.1.1]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.1
 [0.1.0]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.0

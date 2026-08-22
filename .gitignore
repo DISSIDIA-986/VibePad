@@ -1,6 +1,8 @@
 .build/
 .swiftpm/
 .DS_Store
+**/.DS_Store
+config/VibePadApp/AppIcon.iconset/
 *.xcodeproj
 VibePad.app/
 spike/padjutsud.lock
@@ -12,3 +14,6 @@ spike/padjutsud.lock
 !docs/**
 !bin/
 !bin/**
+!config/VibePadApp/**
+!config/VibePadApp/*.png
+!config/VibePadApp/*.icns
