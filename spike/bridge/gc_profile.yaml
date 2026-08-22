@@ -1,0 +1,32 @@
+version: 1
+
+shell: /bin/zsh
+
+groups:
+  ghostty:
+    - com.mitchellh.ghostty
+
+rules:
+  common:
+    buttons:
+      lb:
+        shell: /Users/niuyp/Documents/github.com/VibePad/bin/inject-rctrl.sh
+      a:
+        tap: enter
+      b:
+        tap: cmd+z
+      x:
+        tap: cmd+enter
+      y:
+        tap: backspace
+    sticks:
+      left:
+        mode: mouse_move
+        deadzone: 0.18
+        max_speed_px_s: 2400
+        gamma: 2.0
+
+  $ghostty:
+    buttons:
+      lb:
+        shell: /Users/niuyp/Documents/github.com/VibePad/bin/inject-rctrl.sh

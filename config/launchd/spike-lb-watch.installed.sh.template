@@ -1,0 +1,26 @@
+#!/bin/zsh
+# Installed by bin/install-daemon.sh — lives outside ~/Documents for launchd access.
+set -euo pipefail
+REPO="REPO_PATH"
+APP_SUPPORT="APP_SUPPORT_PATH"
+# shellcheck source=daemon-singleton.sh
+source "$APP_SUPPORT/bin/daemon-singleton.sh"
+
+if ! vpad_acquire_watch_lock 0; then
+  echo "[$(date '+%H:%M:%S')] spike-lb-watch: lock held, exiting" >> /tmp/spike-lb-watch.err.log
+  exit 0
+fi
+
+export DYLD_LIBRARY_PATH="/opt/homebrew/lib:${DYLD_LIBRARY_PATH:-}"
+LOG=/tmp/spike-lb-toggle.log
+SCRIPT="$REPO/bin/spike-lb-toggle.py"
+
+echo "[$(date '+%H:%M:%S')] spike-lb-watch started via launchd (pid $$)" >> "$LOG"
+(cd "$REPO" && swift build -c release >/dev/null 2>&1) || true
+
+while true; do
+  echo "[$(date '+%H:%M:%S')] starting spike-lb-toggle" >> "$LOG"
+  python3 -u "$SCRIPT"
+  echo "[$(date '+%H:%M:%S')] exited, restart in 2s" >> "$LOG"
+  sleep 2
+done

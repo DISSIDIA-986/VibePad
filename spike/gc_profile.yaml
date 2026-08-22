@@ -1,0 +1,25 @@
+version: 1
+
+groups:
+  ghostty:
+    - com.mitchellh.ghostty
+
+rules:
+  common:
+    buttons:
+      lb:
+        rawkey: rctrl
+      a:
+        tap: enter
+      b:
+        tap: cmd+z
+      x:
+        tap: cmd+enter
+      y:
+        tap: backspace
+    sticks:
+      left:
+        mode: mouse_move
+        deadzone: 0.18
+        max_speed_px_s: 2400
+        gamma: 2.0

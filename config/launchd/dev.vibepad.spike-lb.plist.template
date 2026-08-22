@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.vibepad.spike-lb</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>INSTALLED_WATCH</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>REPO_PATH</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DYLD_LIBRARY_PATH</key>
+        <string>/opt/homebrew/lib</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>3</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/spike-lb-watch.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/spike-lb-watch.err.log</string>
+</dict>
+</plist>
