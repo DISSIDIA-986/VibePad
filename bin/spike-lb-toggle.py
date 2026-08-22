@@ -30,9 +30,13 @@ A_DEBOUNCE_S = 0.12
 FIRE_ON_RELEASE = {1, 2}
 RSTICK_X_COOLDOWN_S = 2.0
 
+RIGHT_STICK_GUARD = 0.20
+# Right stick Y → scroll wheel in Ghostty (X button still on release + cooldown).
+RSTICK_SCROLL_MAX_LINES_S = 90.0
+GHOSTTY_BUNDLE = "com.mitchellh.ghostty"
+
 SDL_AXIS_RIGHTX = 2
 SDL_AXIS_RIGHTY = 3
-RIGHT_STICK_GUARD = 0.20
 
 # Left stick → mouse (matches config/default.yaml)
 STICK_DEADZONE = 0.18
@@ -64,8 +68,11 @@ SDL_INIT_EVENTS = 0x00004000
 SDL_CONTROLLERAXISMOTION = 0x650
 SDL_CONTROLLERBUTTONDOWN = 0x651
 SDL_CONTROLLERBUTTONUP = 0x652
+SDL_CONTROLLERDEVICEADDED = 0x653
+SDL_CONTROLLERDEVICEREMOVED = 0x654
 
 kCGEventMouseMoved = 5
+kCGScrollEventUnitLine = 1
 kCGAnnotatedSessionEventTap = 2
 kVK_Return = 0x24
 kCGHIDEventTap = 0
@@ -78,6 +85,7 @@ class CGPoint(ctypes.Structure):
 
 _CG = None
 _CURSOR_BOUNDS: tuple[float, float, float, float] | None = None
+_FRONTMOST_CACHE: dict[str, float | str] = {"bundle": "", "at": 0.0}
 SCREEN_BOUNDS_SCRIPT = os.path.join(REPO, "bin/screen-visible-frame.swift")
 
 
@@ -118,6 +126,10 @@ def load_sdl():
     sdl.SDL_GameControllerGetButton.argtypes = [ctypes.c_void_p, ctypes.c_int]
     sdl.SDL_GameControllerGetAxis.restype = ctypes.c_int16
     sdl.SDL_GameControllerGetAxis.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    sdl.SDL_GameControllerClose.restype = None
+    sdl.SDL_GameControllerClose.argtypes = [ctypes.c_void_p]
+    sdl.SDL_GameControllerGetAttached.restype = ctypes.c_bool
+    sdl.SDL_GameControllerGetAttached.argtypes = [ctypes.c_void_p]
     sdl.SDL_PollEvent.restype = ctypes.c_bool
     sdl.SDL_PollEvent.argtypes = [ctypes.c_void_p]
     sdl.SDL_PumpEvents.restype = None
@@ -149,6 +161,13 @@ def load_cg():
         ctypes.c_void_p,
         ctypes.c_uint16,
         ctypes.c_bool,
+    ]
+    cg.CGEventCreateScrollWheelEvent.restype = ctypes.c_void_p
+    cg.CGEventCreateScrollWheelEvent.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_int32,
     ]
     _CG = cg
     return _CG
@@ -213,6 +232,55 @@ def axis_delta(axis: float) -> float:
     normalized = (magnitude - STICK_DEADZONE) / (1.0 - STICK_DEADZONE)
     speed = STICK_MAX_SPEED_PX_S * (normalized ** STICK_GAMMA) * (1.0 if axis >= 0 else -1.0)
     return speed / POLL_HZ
+
+
+def scroll_lines_delta(axis: float) -> int:
+    magnitude = abs(axis)
+    if magnitude <= STICK_DEADZONE:
+        return 0
+    normalized = (magnitude - STICK_DEADZONE) / (1.0 - STICK_DEADZONE)
+    lines_per_s = RSTICK_SCROLL_MAX_LINES_S * (normalized ** STICK_GAMMA) * (1.0 if axis >= 0 else -1)
+    delta = int(round(lines_per_s / POLL_HZ))
+    if delta == 0 and lines_per_s != 0:
+        return 1 if lines_per_s > 0 else -1
+    return delta
+
+
+def is_ghostty_focused() -> bool:
+    now = time.monotonic()
+    if now - float(_FRONTMOST_CACHE["at"]) < 0.25:
+        return _FRONTMOST_CACHE["bundle"] == GHOSTTY_BUNDLE
+    bundle = ""
+    try:
+        out = subprocess.run(
+            [
+                "/usr/bin/osascript",
+                "-e",
+                "tell application \"System Events\" to get bundle identifier of "
+                "first application process whose frontmost is true",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=1,
+            check=True,
+        )
+        bundle = out.stdout.strip()
+    except Exception:
+        bundle = ""
+    _FRONTMOST_CACHE["bundle"] = bundle
+    _FRONTMOST_CACHE["at"] = now
+    return bundle == GHOSTTY_BUNDLE
+
+
+def scroll_wheel(lines: int) -> None:
+    if lines == 0:
+        return
+    cg = load_cg()
+    src = cg.CGEventSourceCreate(0)
+    ev = cg.CGEventCreateScrollWheelEvent(src, kCGScrollEventUnitLine, 1, lines)
+    if not ev:
+        return
+    cg.CGEventPost(kCGHIDEventTap, ev)
 
 
 def move_mouse(dx: int, dy: int, bounds: tuple[float, float, float, float]) -> None:
@@ -343,6 +411,70 @@ def poll_dpad_tabs(
         prev_dpad[btn] = pressed
 
 
+def open_first_controller(sdl) -> ctypes.c_void_p | None:
+    count = sdl.SDL_NumJoysticks()
+    for index in range(count):
+        if sdl.SDL_IsGameController(index):
+            gc = sdl.SDL_GameControllerOpen(index)
+            if gc:
+                return gc
+    return None
+
+
+def controller_label(sdl, gc) -> str:
+    name = sdl.SDL_GameControllerName(gc)
+    return name.decode() if name else "controller"
+
+
+def close_controller(sdl, gc) -> None:
+    if gc:
+        sdl.SDL_GameControllerClose(gc)
+
+
+def log_mapping(sdl, gc) -> None:
+    log(f"opened {controller_label(sdl, gc)}")
+    for btn, (label, argv) in BUTTON_MAP.items():
+        action = argv[-1] if argv[-1] != INJECT_RCTRL else "rctrl"
+        if label == "START":
+            action = "focus-ghostty"
+        log(f"  {label} → {action}")
+    log("  A → enter (poll+inline CGEvent)")
+    for _btn, (label, argv) in DPAD_TAB_BUTTONS.items():
+        log(f"  {label} → {argv[-1]} (Ghostty tab, once/press)")
+    log(f"  L-stick → mouse (deadzone={STICK_DEADZONE}, max={int(STICK_MAX_SPEED_PX_S)}px/s, multi-display)")
+    log(f"  R-stick → scroll Ghostty (max={int(RSTICK_SCROLL_MAX_LINES_S)} lines/s; X btn unchanged)")
+
+
+def fresh_input_state() -> dict:
+    return {
+        "last_action": {},
+        "b_down_at": {},
+        "press_latched": set(),
+        "last_rstick_active_at": 0.0,
+        "prev_poll": {btn: False for btn in POLL_BUTTONS},
+        "prev_dpad": {btn: False for btn in DPAD_TAB_BUTTONS},
+        "dpad_latched": set(),
+        "prev_a": False,
+        "last_a_at": [0.0],
+    }
+
+
+def sync_pressed_state(sdl, gc, state: dict) -> None:
+    """After reconnect, match poll edges to physical state — avoid ghost fire."""
+    for btn in POLL_BUTTONS:
+        state["prev_poll"][btn] = bool(sdl.SDL_GameControllerGetButton(gc, btn))
+    state["prev_a"] = bool(sdl.SDL_GameControllerGetButton(gc, POLL_A_BUTTON))
+    for btn in DPAD_TAB_BUTTONS:
+        pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
+        state["prev_dpad"][btn] = pressed
+        if pressed:
+            state["dpad_latched"].add(btn)
+        else:
+            state["dpad_latched"].discard(btn)
+    state["press_latched"].clear()
+    state["b_down_at"].clear()
+
+
 def main() -> int:
     open(LOG, "w", encoding="utf-8").close()
     log("spike gamepad mapping (Gate 0 buttons + left stick)")
@@ -358,88 +490,113 @@ def main() -> int:
         log(f"SDL_Init failed: {err.decode() if err else '?'}")
         return 1
 
-    if sdl.SDL_NumJoysticks() <= 0:
-        log("NO CONTROLLER")
-        return 1
-
-    gc = sdl.SDL_GameControllerOpen(0)
-    if not gc:
-        log("GameControllerOpen failed")
-        return 1
-
-    name = sdl.SDL_GameControllerName(gc)
-    log(f"opened {name.decode() if name else 'controller'}")
-    for btn, (label, argv) in BUTTON_MAP.items():
-        action = argv[-1] if argv[-1] != INJECT_RCTRL else "rctrl"
-        if label == "START":
-            action = "focus-ghostty"
-        log(f"  {label} → {action}")
-    log(f"  A → enter (poll+inline CGEvent)")
-    for _btn, (label, argv) in DPAD_TAB_BUTTONS.items():
-        log(f"  {label} → {argv[-1]} (Ghostty tab, once/press)")
-    log(f"  L-stick → mouse (deadzone={STICK_DEADZONE}, max={int(STICK_MAX_SPEED_PX_S)}px/s, multi-display)")
+    gc: ctypes.c_void_p | None = None
+    if sdl.SDL_NumJoysticks() > 0:
+        gc = open_first_controller(sdl)
+        if not gc:
+            log("GameControllerOpen failed")
+            return 1
+        log_mapping(sdl, gc)
+    else:
+        log("no controller yet — waiting for Bluetooth reconnect")
 
     desktop_bounds = refresh_desktop_bounds(force=True)
 
     event = SDL_Event()
-    last_action: dict[int, float] = {}
-    b_down_at: dict[int, float] = {}
-    press_latched: set[int] = set()
-    last_rstick_active_at = 0.0
+    state = fresh_input_state()
     last_heartbeat = time.monotonic()
     last_stick_log = 0.0
 
-    for btn, (label, _) in BUTTON_MAP.items():
-        if sdl.SDL_GameControllerGetButton(gc, btn):
-            log(f"WARN {label} held at startup — release before testing")
+    if gc:
+        for btn, (label, _) in BUTTON_MAP.items():
+            if sdl.SDL_GameControllerGetButton(gc, btn):
+                log(f"WARN {label} held at startup — release before testing")
 
-    log("ready — A=poll enter, D-pad=tabs, L-stick=mouse")
+    log("ready — A=poll enter, D-pad=tabs, L-stick=mouse; hot-reconnect enabled")
 
-    prev_poll = {btn: False for btn in POLL_BUTTONS}
-    prev_dpad = {btn: False for btn in DPAD_TAB_BUTTONS}
-    dpad_latched: set[int] = set()
-    prev_a = False
-    last_a_at = [0.0]
+    def attach_controller(*, reason: str) -> None:
+        nonlocal gc
+        if gc:
+            return
+        gc = open_first_controller(sdl)
+        if not gc:
+            return
+        state.clear()
+        state.update(fresh_input_state())
+        sync_pressed_state(sdl, gc, state)
+        log_mapping(sdl, gc)
+        log(f"controller ready ({reason})")
+
+    def detach_controller(*, reason: str) -> None:
+        nonlocal gc
+        if not gc:
+            return
+        close_controller(sdl, gc)
+        gc = None
+        state.clear()
+        state.update(fresh_input_state())
+        log(f"controller disconnected ({reason}) — waiting for reconnect")
 
     while True:
         sdl.SDL_PumpEvents()
-        if right_stick_deflected(sdl, gc):
-            last_rstick_active_at = time.monotonic()
 
         while sdl.SDL_PollEvent(ctypes.byref(event)):
             et = event.type
-            if et == SDL_CONTROLLERBUTTONDOWN:
+            if et == SDL_CONTROLLERDEVICEREMOVED:
+                detach_controller(reason="SDL device removed event")
+            elif et == SDL_CONTROLLERDEVICEADDED:
+                attach_controller(reason="SDL device added event")
+            elif gc is None:
+                continue
+            elif et == SDL_CONTROLLERBUTTONDOWN:
                 btn = event.padding[8]
                 if btn in POLL_BUTTONS:
                     continue
-                b_down_at[btn] = time.monotonic()
+                state["b_down_at"][btn] = time.monotonic()
                 try_fire_button(
-                    btn, "DOWN", last_action, b_down_at, press_latched,
-                    last_rstick_active_at=last_rstick_active_at,
+                    btn, "DOWN", state["last_action"], state["b_down_at"], state["press_latched"],
+                    last_rstick_active_at=state["last_rstick_active_at"],
                 )
             elif et == SDL_CONTROLLERBUTTONUP:
                 btn = event.padding[8]
                 if btn in POLL_BUTTONS:
                     continue
                 try_fire_button(
-                    btn, "UP", last_action, b_down_at, press_latched,
-                    last_rstick_active_at=last_rstick_active_at,
+                    btn, "UP", state["last_action"], state["b_down_at"], state["press_latched"],
+                    last_rstick_active_at=state["last_rstick_active_at"],
                 )
-                b_down_at.pop(btn, None)
+                state["b_down_at"].pop(btn, None)
 
-        poll_dpad_tabs(sdl, gc, prev_dpad, dpad_latched)
-        prev_a = poll_a_enter(sdl, gc, prev_a, last_a_at)
+        if gc is None:
+            if sdl.SDL_NumJoysticks() > 0:
+                attach_controller(reason="poll")
+        elif not sdl.SDL_GameControllerGetAttached(gc):
+            detach_controller(reason="SDL_GetAttached false")
+
+        if gc is None:
+            now = time.monotonic()
+            if now - last_heartbeat >= HEARTBEAT_S:
+                last_heartbeat = now
+                log("heartbeat waiting for controller")
+            time.sleep(0.05)
+            continue
+
+        if right_stick_deflected(sdl, gc):
+            state["last_rstick_active_at"] = time.monotonic()
+
+        poll_dpad_tabs(sdl, gc, state["prev_dpad"], state["dpad_latched"])
+        state["prev_a"] = poll_a_enter(sdl, gc, state["prev_a"], state["last_a_at"])
 
         for btn in POLL_BUTTONS:
             pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
-            if pressed and not prev_poll[btn]:
+            if pressed and not state["prev_poll"][btn]:
                 try_fire_button(
-                    btn, "DOWN", last_action, b_down_at, press_latched,
-                    last_rstick_active_at=last_rstick_active_at,
+                    btn, "DOWN", state["last_action"], state["b_down_at"], state["press_latched"],
+                    last_rstick_active_at=state["last_rstick_active_at"],
                 )
-            elif not pressed and prev_poll[btn]:
-                press_latched.discard(btn)
-            prev_poll[btn] = pressed
+            elif not pressed and state["prev_poll"][btn]:
+                state["press_latched"].discard(btn)
+            state["prev_poll"][btn] = pressed
 
         raw_x = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_LEFTX)
         raw_y = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_LEFTY)
@@ -453,6 +610,13 @@ def main() -> int:
             if now - last_stick_log >= 0.5:
                 last_stick_log = now
                 log(f"STICK move dx={dx} dy={dy}")
+
+        if is_ghostty_focused():
+            raw_ry = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTY)
+            ay = -(raw_ry / 32768.0)
+            scroll_y = scroll_lines_delta(ay)
+            if scroll_y:
+                scroll_wheel(scroll_y)
 
         now = time.monotonic()
         if now - last_heartbeat >= HEARTBEAT_S:
