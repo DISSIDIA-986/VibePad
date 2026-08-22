@@ -1,6 +1,6 @@
 # VibePad — Task Tracker
 
-**Phase:** 1 (production daemon) · **Mode:** soak test · **Updated:** 2026-08-22
+**Phase:** 1 (production daemon) · **Mode:** next dev batch · **Updated:** 2026-08-22
 
 ---
 
@@ -18,21 +18,24 @@
 - [x] Bluetooth hot-reconnect (spike SDL) — user verified 2026-08-22
 - [x] Right stick → Ghostty terminal scroll — user verified 2026-08-22
 - [x] `bin/restart-daemon.sh` — safe relaunch
-- [x] GitHub releases v0.1.0 / v0.1.1
+- [x] GitHub releases v0.1.0–v0.1.2 + README infographics
+- [x] macOS app icon + `assets/` marketing images
 
 ---
 
-## Soak test (user, few days) 🔍
+## Soak test 🔍
 
-- [ ] Daily use lying in bed — Ghostty agent input + voice
-- [ ] Note any bugs in STATUS.md watch list
-- [ ] Confirm launchd auto-starts after reboot (optional)
+- [x] Daily bed use — LB/A/D-pad/sticks/scroll/reconnect verified
+- [ ] Optional: launchd after reboot
+- [ ] Log any new bugs in STATUS.md
 
-**If no issues → proceed to "Next dev batch" below.**
+**Proceeding to Priority 1** (user ready for next session).
 
 ---
 
-## Next dev batch (after soak test) 📋
+## Next dev batch 📋
+
+> **Not yet:** drop Python. First prove VibePad.app (GameController or SDL) matches spike Gate 0.
 
 ### Priority 1 — GameController migration
 
