@@ -3,6 +3,7 @@
 .DS_Store
 *.xcodeproj
 VibePad.app/
+spike/padjutsud.lock
 
 # Override ~/.gitignore_global (ignores *.md and bin/)
 !README.md
