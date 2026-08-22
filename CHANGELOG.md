@@ -2,6 +2,24 @@
 
 All notable changes to VibePad are documented here.
 
+## [0.1.1] — 2026-08-22
+
+### What you can do now
+
+- **Turn the Xbox off to save battery** — Bluetooth reconnect is automatic; buttons work again without restarting Terminal or VibePad.app.
+- **Scroll Ghostty terminal with the right stick** — push down toward latest CLI output, up for scrollback (Claude Code / Cursor CLI / Codex sessions).
+- **Recover manually** if needed: `bin/restart-daemon.sh` (kills stale processes before relaunch).
+
+### Added
+
+- SDL **hot-reconnect** — `CONTROLLERDEVICEADDED/REMOVED`, `GetAttached` poll, sync pressed state on attach (no ghost Enter/LB after reconnect).
+- **Right stick → scroll wheel** in Ghostty (max ~90 lines/s; X button unchanged with release + cooldown).
+- `bin/restart-daemon.sh` — safe launchd restart via singleton helpers.
+
+### Fixed
+
+- `restart-daemon.sh` no longer leaves orphan `spike-lb-toggle.py` processes.
+
 ## [0.1.0] — 2026-08-22
 
 ### What you can do now
@@ -23,6 +41,7 @@ All notable changes to VibePad are documented here.
 
 - GameController does not see the controller in CLI; spike (Python SDL) is the production stack until in-app GC is verified.
 - Config YAML missing d-pad / Menu / LB entries (spike-only for now).
-- Right stick intentionally unused (BLE ghost X events).
+- Config YAML missing d-pad / Menu / LB entries (spike-only for now).
 
+[0.1.1]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.1
 [0.1.0]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.0

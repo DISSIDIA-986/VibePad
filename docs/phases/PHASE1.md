@@ -13,6 +13,8 @@ Gate 0 **passed** 2026-08-22 (Mac Studio, macOS 27 beta, Xbox 045E:0B13, 2–3 d
 | Y | Backspace | ✅ |
 | Menu (Start) | Focus Ghostty | ✅ |
 | Left stick | Mouse move (multi-display bounds) | ✅ |
+| Right stick | Scroll Ghostty terminal (v0.1.1) | ✅ |
+| Bluetooth reconnect | Hot-reconnect without restart (v0.1.1) | ✅ |
 
 **Stack that works:** `bin/spike-lb-watch.sh` → Python SDL poll → `vibepad` / shell inject.
 

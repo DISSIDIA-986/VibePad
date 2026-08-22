@@ -1,6 +1,6 @@
 # VibePad — Project Status
 
-**Last updated:** 2026-08-22 (session end, soak-test phase)
+**Last updated:** 2026-08-22 (v0.1.1 — hot-reconnect + right-stick scroll)
 
 ## Current production stack
 
@@ -21,7 +21,7 @@ launchd (dev.vibepad.spike-lb)
 | Phase 1 Step 1 — launchd | ✅ DONE | No Terminal window; singleton lock |
 | Phase 1 Step 2 — VibePad.app | ✅ SCAFFOLD | Menu bar app built; GC path experimental |
 | Phase 1 Step 3 — polish | ⏸ DEFERRED | After soak test |
-| Git first commit | ⬜ TODO | Repo still untracked |
+| Git / releases | ✅ v0.1.0 + v0.1.1 | GitHub DISSIDIA-986/VibePad |
 
 ## Verified mapping (Ghostty + 豆包)
 
@@ -35,8 +35,9 @@ launchd (dev.vibepad.spike-lb)
 | Menu (Start) | Focus Ghostty |
 | D-pad ← / → | Previous / next tab |
 | Left stick | Mouse (multi-display) |
+| Right stick | Scroll Ghostty terminal (↑ history / ↓ latest) |
 
-Right stick intentionally unused (BLE ghost X events).
+X button: ⌘Enter on release (BLE may ghost when moving right stick — cooldown applies). Right stick Y-axis scroll does not use the X button.
 
 ## Accessibility grants (user confirmed)
 
@@ -61,10 +62,11 @@ Right stick intentionally unused (BLE ghost X events).
 ## Soak-test watch list (observe few days)
 
 - [ ] LB: missed toggles or double-fire after sleep/wake
+- [x] **Bluetooth disconnect/reconnect** — hot-reconnect in spike (2026-08-22); manual fallback: `bin/restart-daemon.sh`
 - [ ] A: latency or double Enter in agent input box
 - [ ] D-pad: tab switch after Ghostty update or focus change
 - [ ] Left stick: cursor clamp at display edges (3 monitors)
-- [ ] launchd survives logout/login and controller reconnect
+- [ ] launchd survives logout/login and controller reconnect (hot-reconnect added; verify on device)
 - [ ] Duplicate daemon if manual `spike-lb-watch.sh` is run (should be blocked)
 
 ## Resume pointer

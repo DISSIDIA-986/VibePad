@@ -15,7 +15,10 @@
 - [x] `vibepad doctor` — accessibility, launchd, spike status
 - [x] VibePad.app scaffold — menu bar, GC experimental daemon, dual-daemon warning
 - [x] Config install → `~/Library/Application Support/VibePad/config.yaml`
-- [x] Unit tests — 12/12 passing
+- [x] Bluetooth hot-reconnect (spike SDL) — user verified 2026-08-22
+- [x] Right stick → Ghostty terminal scroll — user verified 2026-08-22
+- [x] `bin/restart-daemon.sh` — safe relaunch
+- [x] GitHub releases v0.1.0 / v0.1.1
 
 ---
 
@@ -49,7 +52,6 @@
 - [ ] `vibepad doctor` — display count
 - [ ] D-pad log level: stderr audit → info not err
 - [ ] Singleton lockfile persistence after launchd restart
-- [ ] First git commit
 
 ---
 
@@ -67,6 +69,7 @@
 
 ```bash
 bin/status-daemon.sh              # health check
+bin/restart-daemon.sh             # relaunch spike (after BT issues)
 bin/install-daemon.sh             # (re)install launchd
 bin/uninstall-daemon.sh           # stop everything
 bin/build-app.sh && open VibePad.app

@@ -7,6 +7,7 @@ Xbox 蓝牙手柄 → Ghostty + 豆包 IME（Toggle 语音）。Swift 注入 + S
 ```bash
 bin/install-daemon.sh      # launchd (recommended — no Terminal window)
 bin/status-daemon.sh
+bin/restart-daemon.sh   # if buttons die after BT reconnect (should auto-recover now)
 .build/release/vibepad doctor
 ```
 
@@ -20,7 +21,7 @@ Menu-bar app (experimental): `bin/build-app.sh && open VibePad.app`
 
 **Status / tasks:** [docs/STATUS.md](docs/STATUS.md) · [docs/TASKS.md](docs/TASKS.md)
 
-**Changelog:** [CHANGELOG.md](CHANGELOG.md) (v0.1.0)
+**Changelog:** [CHANGELOG.md](CHANGELOG.md) (v0.1.1)
 
 ## Default mapping (Ghostty agent / shell)
 
@@ -34,6 +35,7 @@ Menu-bar app (experimental): `bin/build-app.sh && open VibePad.app`
 | Menu (Start) | Focus Ghostty |
 | D-pad ← / → | Previous / next **tab** (⌘⇧[ / ⌘⇧]) |
 | Left stick | Mouse move (multi-display) |
+| Right stick | Scroll Ghostty terminal (↑ history / ↓ latest) |
 
 ## Build & doctor
 
