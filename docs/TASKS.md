@@ -20,6 +20,7 @@
 - [x] `bin/restart-daemon.sh` — safe relaunch
 - [x] GitHub releases v0.1.0–v0.1.2 + README infographics
 - [x] macOS app icon + `assets/` marketing images
+- [x] D-pad ↑/↓ → Ghostty font size zoom — user verified 2026-08-22
 
 ---
 
@@ -29,15 +30,15 @@
 - [ ] Optional: launchd after reboot
 - [ ] Log any new bugs in STATUS.md
 
-**Proceeding to Priority 1** (user ready for next session).
+**Soak test continues** — Python → Swift migration deferred until stable.
 
 ---
 
 ## Next dev batch 📋
 
-> **Not yet:** drop Python. First prove VibePad.app (GameController or SDL) matches spike Gate 0.
+> **Deferred:** Python → Swift migration — continue soak test; revisit when stable.
 
-### Priority 1 — GameController migration
+### Priority 1 — GameController migration (on hold)
 
 - [ ] Stop spike: `bin/uninstall-daemon.sh`
 - [ ] Test VibePad.app → Start GameController daemon — all buttons + stick

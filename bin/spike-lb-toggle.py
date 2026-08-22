@@ -62,6 +62,12 @@ DPAD_TAB_BUTTONS: dict[int, tuple[str, list[str]]] = {
     14: ("DPAD-R", [INJECT_KEY, "cmd+shift+closebracket"]),
 }
 
+# D-pad ↑/↓ : Ghostty font size (⌘= / ⌘-) — poll only, Ghostty focused, once per press.
+DPAD_ZOOM_BUTTONS: dict[int, tuple[str, list[str]]] = {
+    11: ("DPAD-U", [INJECT_KEY, "cmd+equal"]),
+    12: ("DPAD-D", [INJECT_KEY, "cmd+minus"]),
+}
+
 SDL_INIT_GAMECONTROLLER = 0x00002000
 SDL_INIT_JOYSTICK = 0x00000200
 SDL_INIT_EVENTS = 0x00004000
@@ -392,14 +398,15 @@ def poll_a_enter(
     return pressed
 
 
-def poll_dpad_tabs(
+def poll_dpad_latched(
     sdl,
     gc,
+    buttons: dict[int, tuple[str, list[str]]],
     prev_dpad: dict[int, bool],
     dpad_latched: set[int],
 ) -> None:
-    """One tab switch per physical d-pad press (poll only — no hat/event duplicate)."""
-    for btn, (label, argv) in DPAD_TAB_BUTTONS.items():
+    """One action per physical d-pad press (poll only — no hat/event duplicate)."""
+    for btn, (label, argv) in buttons.items():
         pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
         if pressed:
             if btn not in dpad_latched:
@@ -409,6 +416,31 @@ def poll_dpad_tabs(
         else:
             dpad_latched.discard(btn)
         prev_dpad[btn] = pressed
+
+
+def poll_dpad_tabs(
+    sdl,
+    gc,
+    prev_dpad: dict[int, bool],
+    dpad_latched: set[int],
+) -> None:
+    poll_dpad_latched(sdl, gc, DPAD_TAB_BUTTONS, prev_dpad, dpad_latched)
+
+
+def poll_dpad_zoom(
+    sdl,
+    gc,
+    prev_dpad: dict[int, bool],
+    dpad_latched: set[int],
+) -> None:
+    """Zoom in/out only when Ghostty is frontmost."""
+    if not is_ghostty_focused():
+        for btn in DPAD_ZOOM_BUTTONS:
+            if not bool(sdl.SDL_GameControllerGetButton(gc, btn)):
+                dpad_latched.discard(btn)
+                prev_dpad[btn] = False
+        return
+    poll_dpad_latched(sdl, gc, DPAD_ZOOM_BUTTONS, prev_dpad, dpad_latched)
 
 
 def open_first_controller(sdl) -> ctypes.c_void_p | None:
@@ -441,6 +473,8 @@ def log_mapping(sdl, gc) -> None:
     log("  A → enter (poll+inline CGEvent)")
     for _btn, (label, argv) in DPAD_TAB_BUTTONS.items():
         log(f"  {label} → {argv[-1]} (Ghostty tab, once/press)")
+    for _btn, (label, argv) in DPAD_ZOOM_BUTTONS.items():
+        log(f"  {label} → {argv[-1]} (Ghostty zoom, once/press, focused only)")
     log(f"  L-stick → mouse (deadzone={STICK_DEADZONE}, max={int(STICK_MAX_SPEED_PX_S)}px/s, multi-display)")
     log(f"  R-stick → scroll Ghostty (max={int(RSTICK_SCROLL_MAX_LINES_S)} lines/s; X btn unchanged)")
 
@@ -452,7 +486,9 @@ def fresh_input_state() -> dict:
         "press_latched": set(),
         "last_rstick_active_at": 0.0,
         "prev_poll": {btn: False for btn in POLL_BUTTONS},
-        "prev_dpad": {btn: False for btn in DPAD_TAB_BUTTONS},
+        "prev_dpad": {
+            btn: False for btn in {**DPAD_TAB_BUTTONS, **DPAD_ZOOM_BUTTONS}
+        },
         "dpad_latched": set(),
         "prev_a": False,
         "last_a_at": [0.0],
@@ -464,7 +500,7 @@ def sync_pressed_state(sdl, gc, state: dict) -> None:
     for btn in POLL_BUTTONS:
         state["prev_poll"][btn] = bool(sdl.SDL_GameControllerGetButton(gc, btn))
     state["prev_a"] = bool(sdl.SDL_GameControllerGetButton(gc, POLL_A_BUTTON))
-    for btn in DPAD_TAB_BUTTONS:
+    for btn in {**DPAD_TAB_BUTTONS, **DPAD_ZOOM_BUTTONS}:
         pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
         state["prev_dpad"][btn] = pressed
         if pressed:
@@ -512,7 +548,7 @@ def main() -> int:
             if sdl.SDL_GameControllerGetButton(gc, btn):
                 log(f"WARN {label} held at startup — release before testing")
 
-    log("ready — A=poll enter, D-pad=tabs, L-stick=mouse; hot-reconnect enabled")
+    log("ready — A=poll enter, D-pad=tabs+zoom, L-stick=mouse; hot-reconnect enabled")
 
     def attach_controller(*, reason: str) -> None:
         nonlocal gc
@@ -585,6 +621,7 @@ def main() -> int:
             state["last_rstick_active_at"] = time.monotonic()
 
         poll_dpad_tabs(sdl, gc, state["prev_dpad"], state["dpad_latched"])
+        poll_dpad_zoom(sdl, gc, state["prev_dpad"], state["dpad_latched"])
         state["prev_a"] = poll_a_enter(sdl, gc, state["prev_a"], state["last_a_at"])
 
         for btn in POLL_BUTTONS:

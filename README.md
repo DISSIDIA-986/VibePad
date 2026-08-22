@@ -5,7 +5,7 @@
 Xbox 蓝牙手柄驱动 Ghostty + 豆包 IME，躺在床上做 Vibe Coding（Claude Code / Cursor CLI / Codex CLI）。
 
 [![Release](https://img.shields.io/github/v/release/DISSIDIA-986/VibePad)](https://github.com/DISSIDIA-986/VibePad/releases)
-**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.2
+**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3
 
 ![VibePad setup — hardware, software stack, and install checklist](assets/vibepad-setup-environment.png)
 
@@ -30,7 +30,7 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 
 ---
 
-## Controller mapping (verified v0.1.2)
+## Controller mapping (verified v0.1.3)
 
 | Input | Action | Notes |
 |-------|--------|-------|
@@ -41,10 +41,11 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 | **Y** | Backspace | Delete character |
 | **Menu (Start)** | Focus Ghostty | When another app stole focus |
 | **D-pad ← / →** | Previous / next tab | ⌘⇧[ / ⌘⇧] |
+| **D-pad ↑ / ↓** | Font size zoom | ⌘= / ⌘− — Ghostty focused only |
 | **Left stick** | Mouse move | Union of all displays (multi-monitor) |
 | **Right stick ↑ / ↓** | Terminal scroll | Ghostty focused only; scrollback / latest output |
 
-### Also included (v0.1.2)
+### Also included (v0.1.3)
 
 - **Bluetooth hot-reconnect** — power off the controller to save battery; mappings resume after reconnect (no manual restart).
 - **Singleton daemon** — one spike process; duplicate watch scripts are blocked.
@@ -55,7 +56,6 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 | Input | Status |
 |-------|--------|
 | RB, LT, RT | Unassigned |
-| D-pad ↑ / ↓ | Unassigned |
 | Right stick ← / → | Unassigned (Y-axis scroll only) |
 
 ---
@@ -77,6 +77,13 @@ bin/status-daemon.sh       # verify running
 **Accessibility** (System Settings → Privacy → Accessibility): grant **python3** and **vibepad** (`.build/release/vibepad`).
 
 **Doubao IME:** Toggle mode, hotkey = Right Ctrl. Test with LB in Ghostty.
+
+**Ghostty zoom (D-pad ↑/↓):** if font size does not change, add explicit bindings to your Ghostty config:
+
+```ini
+keybind = super+equal=increase_font_size:1
+keybind = super+minus=decrease_font_size:1
+```
 
 ```bash
 bin/restart-daemon.sh      # manual relaunch if needed
@@ -138,6 +145,6 @@ Design notes: [docs/designs/vibepad.md](docs/designs/vibepad.md)
 
 ## Use case (why this exists)
 
-**Vibe Coding from bed:** external displays (including AR glasses), Xbox controller in hand, Ghostty running Claude Code / Cursor CLI / Codex — voice input via Doubao, send with A, clear mistakes with B/Y, switch agent tabs with D-pad, point with left stick, scroll agent output with right stick.
+**Vibe Coding from bed:** external displays (including AR glasses), Xbox controller in hand, Ghostty running Claude Code / Cursor CLI / Codex — voice input via Doubao, send with A, clear mistakes with B/Y, switch agent tabs with D-pad ←/→, zoom terminal with D-pad ↑/↓, point with left stick, scroll agent output with right stick.
 
 Gate 0 passed · Phase 1 production daemon shipped · soak testing in progress.

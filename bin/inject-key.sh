@@ -39,6 +39,22 @@ tell application "System Events"
 end tell
 EOF
       ;;
+    cmd+equal|cmd+plus)
+      echo "inject: osascript cmd+equal" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  keystroke "=" using command down
+end tell
+EOF
+      ;;
+    cmd+minus)
+      echo "inject: osascript cmd+minus" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  keystroke "-" using command down
+end tell
+EOF
+      ;;
     cmd+grave|cmd+backtick)
       echo "inject: osascript cmd+grave" >&2
       osascript <<'EOF'
@@ -63,7 +79,7 @@ EOF
 }
 
 case "${1:-}" in
-  cmd+z|cmd+enter|cmd+grave|cmd+backtick|cmd+shift+grave|cmd+shift+backtick|cmd+shift+openbracket|cmd+shift+closebracket)
+  cmd+z|cmd+enter|cmd+equal|cmd+plus|cmd+minus|cmd+grave|cmd+backtick|cmd+shift+grave|cmd+shift+backtick|cmd+shift+openbracket|cmd+shift+closebracket)
     cmd_via_system_events "$1"
     exit 0
     ;;

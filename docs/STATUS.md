@@ -1,6 +1,6 @@
 # VibePad — Project Status
 
-**Last updated:** 2026-08-22 (v0.1.1 — hot-reconnect + right-stick scroll)
+**Last updated:** 2026-08-22 (v0.1.3 — D-pad zoom)
 
 ## Current production stack
 
@@ -34,6 +34,7 @@ launchd (dev.vibepad.spike-lb)
 | Y | Backspace |
 | Menu (Start) | Focus Ghostty |
 | D-pad ← / → | Previous / next tab |
+| D-pad ↑ / ↓ | Font size zoom (⌘= / ⌘−, Ghostty focused) |
 | Left stick | Mouse (multi-display) |
 | Right stick | Scroll Ghostty terminal (↑ history / ↓ latest) |
 
@@ -64,7 +65,8 @@ X button: ⌘Enter on release (BLE may ghost when moving right stick — cooldow
 - [ ] LB: missed toggles or double-fire after sleep/wake
 - [x] **Bluetooth disconnect/reconnect** — hot-reconnect in spike (2026-08-22); manual fallback: `bin/restart-daemon.sh`
 - [ ] A: latency or double Enter in agent input box
-- [ ] D-pad: tab switch after Ghostty update or focus change
+- [x] **D-pad ↑/↓ zoom** — user verified 2026-08-22 (works across tab switches)
+- [ ] D-pad ←/→: tab switch after Ghostty update or focus change
 - [ ] Left stick: cursor clamp at display edges (3 monitors)
 - [ ] launchd survives logout/login and controller reconnect (hot-reconnect added; verify on device)
 - [ ] Duplicate daemon if manual `spike-lb-watch.sh` is run (should be blocked)

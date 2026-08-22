@@ -2,6 +2,22 @@
 
 All notable changes to VibePad are documented here.
 
+## [0.1.3] — 2026-08-22
+
+### What you can do now
+
+- **Zoom Ghostty font size from the couch** — D-pad ↑ / ↓ maps to ⌘= / ⌘− when Ghostty is focused (works across tabs).
+
+### Added
+
+- **D-pad ↑/↓ → font size zoom** in spike (`cmd+equal` / `cmd+minus` via osascript; Ghostty-focused gate).
+- `inject-key.sh` support for `cmd+equal`, `cmd+plus`, `cmd+minus`.
+
+### Changed
+
+- README mapping table + Ghostty config hint for reliable zoom keybinds.
+- Python → Swift migration deferred until soak test stabilizes.
+
 ## [0.1.2] — 2026-08-22
 
 ### Added
@@ -54,6 +70,7 @@ All notable changes to VibePad are documented here.
 - GameController does not see the controller in CLI; spike (Python SDL) is the production stack until in-app GC is verified.
 - Config YAML missing d-pad / Menu / LB entries (spike-only for now).
 
+[0.1.3]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.3
 [0.1.2]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.2
 [0.1.1]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.1
 [0.1.0]: https://github.com/DISSIDIA-986/VibePad/releases/tag/v0.1.0
