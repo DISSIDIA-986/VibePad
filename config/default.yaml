@@ -1,0 +1,27 @@
+version: 1
+poll_hz: 500
+
+# Verified Gate 0 mapping (2026-08-22). Spike daemon uses bin/spike-lb-toggle.py;
+# d-pad tab switch is spike-only until VibePad.app.
+
+rules:
+  ghostty:
+    apps:
+      - com.mitchellh.ghostty
+    buttons:
+      lt:
+        tap: rctrl
+      a:
+        tap: enter
+      b:
+        combo: ctrl+u
+      x:
+        combo: cmd+enter
+      y:
+        tap: backspace
+    sticks:
+      left:
+        mode: mouse_move
+        deadzone: 0.18
+        max_speed_px_s: 2400
+        gamma: 2.0

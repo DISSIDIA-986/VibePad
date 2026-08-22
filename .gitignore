@@ -1,0 +1,13 @@
+.build/
+.swiftpm/
+.DS_Store
+*.xcodeproj
+VibePad.app/
+
+# Override ~/.gitignore_global (ignores *.md and bin/)
+!README.md
+!CHANGELOG.md
+!docs/
+!docs/**
+!bin/
+!bin/**
