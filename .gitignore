@@ -17,3 +17,5 @@ spike/padjutsud.lock
 !config/VibePadApp/**
 !config/VibePadApp/*.png
 !config/VibePadApp/*.icns
+!assets/**
+!assets/*.png

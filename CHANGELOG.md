@@ -12,6 +12,7 @@ All notable changes to VibePad are documented here.
 ### Changed
 
 - **README** rewritten for accuracy (full mapping table, architecture, limitations, LinkedIn-ready use case).
+- README infographics in `assets/` (setup/environment + use cases/features).
 
 ## [0.1.1] — 2026-08-22
 
