@@ -21,6 +21,10 @@
 - [x] GitHub releases v0.1.0–v0.1.2 + README infographics
 - [x] macOS app icon + `assets/` marketing images
 - [x] D-pad ↑/↓ → Ghostty font size zoom — user verified 2026-08-22
+- [x] Ghostty View → `/` + slash-mode (R-stick↑↓ / A / B) — 2026-08-22
+- [ ] User verify slash-mode in Claude Code / Cursor CLI / Codex
+- [x] Safari video-rest profile scaffold (frontmost router + RB focus) — 2026-08-22
+- [ ] User verify Safari mapping (A space / B back / X click / LT RT seek / scroll)
 
 ---
 
@@ -37,6 +41,7 @@
 ## Next dev batch 📋
 
 > **Deferred:** Python → Swift migration — continue soak test; revisit when stable.
+> **In flight:** Safari video-rest profile — user verify after `bin/restart-daemon.sh`.
 
 ### Priority 1 — GameController migration (on hold)
 

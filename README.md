@@ -39,11 +39,17 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 | **B** | Ctrl+U | Clear current input line |
 | **X** | ⌘Enter | Fires on **release**; Ghostty fullscreen |
 | **Y** | Backspace | Delete character |
-| **Menu (Start)** | Focus Ghostty | When another app stole focus |
+| **Menu (Start)** | Focus Ghostty | Global — any frontmost app |
+| **View (Back)** | Toggle slash mode | Ghostty: `/` on, Esc off; R-stick ↑↓, A confirm, B Esc (8s) |
+| **RB** | Focus Safari | Global — switch to video rest |
 | **D-pad ← / →** | Previous / next tab | ⌘⇧[ / ⌘⇧] |
 | **D-pad ↑ / ↓** | Font size zoom | ⌘= / ⌘− — Ghostty focused only |
 | **Left stick** | Mouse move | Union of all displays (multi-monitor) |
-| **Right stick ↑ / ↓** | Terminal scroll | Ghostty focused only; scrollback / latest output |
+| **Right stick ↑ / ↓** | Scroll | Ghostty *or* Safari focused |
+| **Safari: A** | Space | Play / pause (video rest) |
+| **Safari: B** | ⌘[ | Browser back |
+| **Safari: X** | Click | Left click at cursor |
+| **Safari: LT / RT** | ← / → | Seek back / forward |
 
 ### Also included (v0.1.3)
 
@@ -55,7 +61,7 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 
 | Input | Status |
 |-------|--------|
-| RB, LT, RT | Unassigned |
+| Y / D-pad in Safari | Ignored (Ghostty-only) |
 | Right stick ← / → | Unassigned (Y-axis scroll only) |
 
 ---
