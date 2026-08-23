@@ -1,27 +1,72 @@
 version: 1
 poll_hz: 500
 
-# Verified Gate 0 mapping (2026-08-22). Spike daemon uses bin/spike-lb-toggle.py;
-# d-pad tab switch is spike-only until VibePad.app.
+# Authoritative mapping doc (2026-08-22). Production daemon is still
+# bin/spike-lb-toggle.py (hardcoded profiles); keep this YAML in sync.
+#
+# WARNING — docs-only for Swift path:
+# - Spike does NOT load this YAML yet (config-load deferred).
+# - VibePadCore parseKeySpec does not yet accept: space, click, left, right,
+#   cmd+[, cmd+=, cmd+- , or stick mode "scroll". Do not point `vibepad run`
+#   / VibePad.app at this file until Swift parser + scroll are extended.
 
 rules:
+  # Global focus switchers — always active regardless of frontmost app.
+  # Menu (Start) → Ghostty, RB → Safari  (see spike GLOBAL_BUTTON_MAP)
+
   ghostty:
     apps:
       - com.mitchellh.ghostty
     buttons:
-      lt:
-        tap: rctrl
+      lb:
+        tap: rctrl          # Doubao voice toggle
       a:
         tap: enter
       b:
         combo: ctrl+u
       x:
-        combo: cmd+enter
+        combo: cmd+enter    # fire on release (BLE)
       y:
         tap: backspace
+      view:
+        tap: slash          # enter slash-mode (spike)
+      dpad_left:
+        combo: cmd+shift+[  # previous tab
+      dpad_right:
+        combo: cmd+shift+]  # next tab
+      dpad_up:
+        combo: cmd+=        # zoom in (focused only)
+      dpad_down:
+        combo: cmd+-        # zoom out (focused only)
     sticks:
       left:
         mode: mouse_move
         deadzone: 0.18
         max_speed_px_s: 2400
         gamma: 2.0
+      right:
+        mode: scroll        # Ghostty focused only
+
+  safari:
+    apps:
+      - com.apple.Safari
+    # Video-rest profile (YouTube / Bilibili on couch).
+    buttons:
+      a:
+        tap: space          # play / pause
+      b:
+        combo: cmd+[        # browser back
+      x:
+        tap: click          # left click at cursor
+      lt:
+        tap: left           # seek back
+      rt:
+        tap: right          # seek forward
+    sticks:
+      left:
+        mode: mouse_move
+        deadzone: 0.18
+        max_speed_px_s: 2400
+        gamma: 2.0
+      right:
+        mode: scroll        # Safari focused only

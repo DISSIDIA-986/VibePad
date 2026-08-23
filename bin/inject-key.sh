@@ -71,6 +71,70 @@ tell application "System Events"
 end tell
 EOF
       ;;
+    cmd+openbracket)
+      echo "inject: osascript cmd+[" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  keystroke "[" using command down
+end tell
+EOF
+      ;;
+    space)
+      echo "inject: osascript space" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 49
+end tell
+EOF
+      ;;
+    left|leftarrow)
+      echo "inject: osascript left" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 123
+end tell
+EOF
+      ;;
+    right|rightarrow)
+      echo "inject: osascript right" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 124
+end tell
+EOF
+      ;;
+    up|uparrow)
+      echo "inject: osascript up" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 126
+end tell
+EOF
+      ;;
+    down|downarrow)
+      echo "inject: osascript down" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 125
+end tell
+EOF
+      ;;
+    escape|esc)
+      echo "inject: osascript escape" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  key code 53
+end tell
+EOF
+      ;;
+    slash|/)
+      echo "inject: osascript slash" >&2
+      osascript <<'EOF'
+tell application "System Events"
+  keystroke "/"
+end tell
+EOF
+      ;;
     *)
       echo "unknown cmd combo: $key" >&2
       return 1
@@ -79,7 +143,7 @@ EOF
 }
 
 case "${1:-}" in
-  cmd+z|cmd+enter|cmd+equal|cmd+plus|cmd+minus|cmd+grave|cmd+backtick|cmd+shift+grave|cmd+shift+backtick|cmd+shift+openbracket|cmd+shift+closebracket)
+  cmd+z|cmd+enter|cmd+equal|cmd+plus|cmd+minus|cmd+grave|cmd+backtick|cmd+shift+grave|cmd+shift+backtick|cmd+shift+openbracket|cmd+shift+closebracket|cmd+openbracket|space|left|leftarrow|right|rightarrow|up|uparrow|down|downarrow|escape|esc|slash|/)
     cmd_via_system_events "$1"
     exit 0
     ;;

@@ -16,13 +16,15 @@ LOG = "/tmp/spike-lb-toggle.log"
 INJECT_RCTRL = os.path.join(REPO, "bin/inject-rctrl.sh")
 INJECT_KEY = os.path.join(REPO, "bin/inject-key.sh")
 FOCUS_GHOSTTY = os.path.join(REPO, "bin/focus-ghostty.sh")
+FOCUS_SAFARI = os.path.join(REPO, "bin/focus-safari.sh")
 VIBEPAD = os.path.join(REPO, ".build/release/vibepad")
 DEBOUNCE_S = 0.15
 DEBOUNCE_B_S = 0.80
 DEBOUNCE_X_S = 0.40
 DEBOUNCE_LB_S = 0.30
 HEARTBEAT_S = 30
-POLL_BUTTONS = {9}  # LB: poll (BLE misses events)
+# LB + R3: poll (Xbox BLE often drops stick-click / shoulder SDL events).
+POLL_BUTTONS = {9}  # LB only (Xbox BLE R3 often never maps in SDL)
 POLL_A_BUTTON = 0
 A_DEBOUNCE_S = 0.12
 
@@ -34,9 +36,29 @@ RIGHT_STICK_GUARD = 0.20
 # Right stick Y → scroll wheel in Ghostty (X button still on release + cooldown).
 RSTICK_SCROLL_MAX_LINES_S = 90.0
 GHOSTTY_BUNDLE = "com.mitchellh.ghostty"
+SAFARI_BUNDLE = "com.apple.Safari"
 
 SDL_AXIS_RIGHTX = 2
 SDL_AXIS_RIGHTY = 3
+SDL_AXIS_TRIGGERLEFT = 4
+SDL_AXIS_TRIGGERRIGHT = 5
+TRIGGER_THRESHOLD = 0.55  # LT/RT normalized axis 0..1
+
+# Ghostty slash-command assist (View → "/", then short slash mode).
+SDL_BUTTON_BACK = 4  # Xbox View / Back
+SLASH_MODE_S = 8.0
+SLASH_NAV_DEADZONE = 0.40
+SLASH_NAV_COOLDOWN_S = 0.20
+
+# Ghostty choice-mode (View hold → arrows/A/B/Y Space for CLI multi-choice prompts).
+# Xbox BLE often never surfaces R3 (RIGHTSTICK) to SDL; View hold is the reliable entry.
+SDL_BUTTON_RIGHTSTICK = 8  # Xbox R3 (optional fallback if BLE ever maps it)
+CHOICE_MODE_S = 6.0
+CHOICE_NAV_DEADZONE = 0.40
+CHOICE_NAV_COOLDOWN_S = 0.20
+CHOICE_STICK_IGNORE_S = 0.15  # ignore stick briefly after enter (click/hold wobble)
+CHOICE_R3_DEBOUNCE_S = 0.30
+CHOICE_VIEW_HOLD_S = 0.50  # View hold ≥500ms toggles choice; short tap keeps slash
 
 # Left stick → mouse (matches config/default.yaml)
 STICK_DEADZONE = 0.18
@@ -47,13 +69,30 @@ POLL_HZ = 100.0  # ~time.sleep(0.01)
 SDL_AXIS_LEFTX = 0
 SDL_AXIS_LEFTY = 1
 
-# SDL button id → (label, shell command argv)
-BUTTON_MAP: dict[int, tuple[str, list[str]]] = {
+# Global focus switchers — always active (any frontmost app).
+GLOBAL_BUTTON_MAP: dict[int, tuple[str, list[str]]] = {
+    6: ("START", [FOCUS_GHOSTTY]),          # Menu → Ghostty
+    10: ("RB", [FOCUS_SAFARI]),             # RB → Safari
+}
+
+# Ghostty profile (exclusive with Safari).
+GHOSTTY_BUTTON_MAP: dict[int, tuple[str, list[str]]] = {
     9: ("LB", [INJECT_RCTRL]),              # Doubao voice toggle
     1: ("B", [INJECT_KEY, "ctrl+u"]),
     2: ("X", [INJECT_KEY, "cmd+enter"]),
     3: ("Y", [INJECT_KEY, "backspace"]),
-    6: ("START", [FOCUS_GHOSTTY]),          # Menu — focus Ghostty
+    # VIEW (button 4) handled specially: short tap = slash, hold = choice mode
+}
+
+# Safari video-rest profile (exclusive with Ghostty). A=space via poll; LT/RT seek.
+SAFARI_BUTTON_MAP: dict[int, tuple[str, list[str]]] = {
+    1: ("B", [INJECT_KEY, "cmd+openbracket"]),  # browser back
+    2: ("X", ["__click__"]),                    # left click at cursor
+}
+
+SAFARI_TRIGGER_SEEK: dict[int, tuple[str, list[str]]] = {
+    SDL_AXIS_TRIGGERLEFT: ("LT", [INJECT_KEY, "left"]),
+    SDL_AXIS_TRIGGERRIGHT: ("RT", [INJECT_KEY, "right"]),
 }
 
 # D-pad ←/→ : Ghostty previous_tab / next_tab (⌘⇧[ / ⌘⇧]) — poll only, once per press.
@@ -78,9 +117,12 @@ SDL_CONTROLLERDEVICEADDED = 0x653
 SDL_CONTROLLERDEVICEREMOVED = 0x654
 
 kCGEventMouseMoved = 5
+kCGEventLeftMouseDown = 1
+kCGEventLeftMouseUp = 2
 kCGScrollEventUnitLine = 1
 kCGAnnotatedSessionEventTap = 2
 kVK_Return = 0x24
+kVK_Space = 0x31
 kCGHIDEventTap = 0
 CURSOR_MARGIN = 4.0  # keep pointer inside menu-bar / dock inset
 
@@ -92,6 +134,14 @@ class CGPoint(ctypes.Structure):
 _CG = None
 _CURSOR_BOUNDS: tuple[float, float, float, float] | None = None
 _FRONTMOST_CACHE: dict[str, float | str] = {"bundle": "", "at": 0.0}
+_SLASH_UNTIL = 0.0  # monotonic deadline; 0 = inactive
+_CHOICE_UNTIL = 0.0  # monotonic deadline; 0 = inactive
+_CHOICE_STICK_IGNORE_UNTIL = 0.0
+_CHOICE_R3_LAST_AT = 0.0
+_BTN_MODE_AT_PRESS: dict[int, str] = {}  # btn -> mode name locked at DOWN
+_SLASH_ARM_GEN = 0  # bumped to cancel in-flight View→slash workers
+_VIEW_DOWN_AT = 0.0  # monotonic; 0 = View not held for pending short/hold resolve
+_VIEW_HOLD_FIRED = False  # True if hold already toggled choice (suppress slash on UP)
 SCREEN_BOUNDS_SCRIPT = os.path.join(REPO, "bin/screen-visible-frame.swift")
 
 
@@ -175,6 +225,12 @@ def load_cg():
         ctypes.c_uint32,
         ctypes.c_int32,
     ]
+    cg.CGEventKeyboardSetUnicodeString.restype = None
+    cg.CGEventKeyboardSetUnicodeString.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_ulong,  # UniCharCount
+        ctypes.c_void_p,  # const UniChar*
+    ]
     _CG = cg
     return _CG
 
@@ -191,6 +247,57 @@ def tap_enter() -> None:
         cg.CGEventPost(kCGAnnotatedSessionEventTap, ev)
         if down:
             time.sleep(0.006)
+
+
+def tap_unicode(ch: str) -> None:
+    """Insert literal Unicode (bypasses Chinese IME — e.g. '/' not '、')."""
+    if not ch:
+        return
+    cg = load_cg()
+    buf = (ctypes.c_uint16 * len(ch))(*(ord(c) for c in ch))
+    for down in (True, False):
+        # keycode 0 + unicode string → character insert, not physical key via IME
+        ev = cg.CGEventCreateKeyboardEvent(None, 0, down)
+        if not ev:
+            log("  err: unicode event create failed")
+            return
+        cg.CGEventKeyboardSetUnicodeString(ev, len(ch), ctypes.byref(buf))
+        cg.CGEventPost(kCGHIDEventTap, ev)
+        if down:
+            time.sleep(0.008)
+
+
+def tap_slash() -> None:
+    """ASCII slash for CLI menus — must not go through IME as '、'."""
+    tap_unicode("/")
+
+
+def tap_space() -> None:
+    """Space — Safari play/pause."""
+    cg = load_cg()
+    src_ev = cg.CGEventSourceCreate(0)
+    for down in (True, False):
+        ev = cg.CGEventCreateKeyboardEvent(src_ev, kVK_Space, down)
+        if not ev:
+            log("  err: space event create failed")
+            return
+        cg.CGEventPost(kCGAnnotatedSessionEventTap, ev)
+        if down:
+            time.sleep(0.006)
+
+
+def click_mouse() -> None:
+    """Left click at current cursor (Safari UI)."""
+    cg = load_cg()
+    ev = cg.CGEventCreate(None)
+    loc = cg.CGEventGetLocation(ev)
+    for etype in (kCGEventLeftMouseDown, kCGEventLeftMouseUp):
+        click = cg.CGEventCreateMouseEvent(None, etype, loc, 0)
+        if not click:
+            log("  err: click event create failed")
+            return
+        cg.CGEventPost(kCGHIDEventTap, click)
+        time.sleep(0.01)
 
 
 def refresh_desktop_bounds(force: bool = False) -> tuple[float, float, float, float]:
@@ -252,10 +359,22 @@ def scroll_lines_delta(axis: float) -> int:
     return delta
 
 
-def is_ghostty_focused() -> bool:
+def invalidate_frontmost_cache() -> None:
+    """Force next frontmost_bundle() to re-query (e.g. after focus switch)."""
+    _FRONTMOST_CACHE["at"] = 0.0
+
+
+def assume_frontmost(bundle: str) -> None:
+    """Optimistically set frontmost after Menu/RB — avoids 250ms stale-profile race."""
+    _FRONTMOST_CACHE["bundle"] = bundle
+    _FRONTMOST_CACHE["at"] = time.monotonic()
+
+
+def frontmost_bundle() -> str:
+    """Cached frontmost app bundle id (~0.25s)."""
     now = time.monotonic()
     if now - float(_FRONTMOST_CACHE["at"]) < 0.25:
-        return _FRONTMOST_CACHE["bundle"] == GHOSTTY_BUNDLE
+        return str(_FRONTMOST_CACHE["bundle"])
     bundle = ""
     try:
         out = subprocess.run(
@@ -275,7 +394,120 @@ def is_ghostty_focused() -> bool:
         bundle = ""
     _FRONTMOST_CACHE["bundle"] = bundle
     _FRONTMOST_CACHE["at"] = now
-    return bundle == GHOSTTY_BUNDLE
+    return bundle
+
+
+def is_ghostty_focused() -> bool:
+    return frontmost_bundle() == GHOSTTY_BUNDLE
+
+
+def is_safari_focused() -> bool:
+    return frontmost_bundle() == SAFARI_BUNDLE
+
+
+def active_profile() -> str | None:
+    """Mutually exclusive profile; None if frontmost app is unmapped."""
+    bundle = frontmost_bundle()
+    if bundle == GHOSTTY_BUNDLE:
+        return "ghostty"
+    if bundle == SAFARI_BUNDLE:
+        return "safari"
+    return None
+
+
+def profile_button_map(profile: str | None) -> dict[int, tuple[str, list[str]]]:
+    if profile == "ghostty":
+        return GHOSTTY_BUTTON_MAP
+    if profile == "safari":
+        return SAFARI_BUTTON_MAP
+    return {}
+
+
+def slash_mode_active() -> bool:
+    """True while Ghostty slash-assist window is open."""
+    global _SLASH_UNTIL
+    if _SLASH_UNTIL <= 0:
+        return False
+    if time.monotonic() >= _SLASH_UNTIL:
+        _SLASH_UNTIL = 0.0
+        log("SLASH mode off (timeout)")
+        return False
+    if not is_ghostty_focused():
+        _SLASH_UNTIL = 0.0
+        log("SLASH mode off (left Ghostty)")
+        return False
+    return True
+
+
+def enter_slash_mode(*, refresh: bool = False) -> None:
+    global _SLASH_UNTIL
+    _SLASH_UNTIL = time.monotonic() + SLASH_MODE_S
+    log(f"SLASH mode {'refreshed' if refresh else 'on'} ({SLASH_MODE_S:.0f}s)")
+
+
+def exit_slash_mode(reason: str) -> None:
+    global _SLASH_UNTIL
+    if _SLASH_UNTIL <= 0:
+        return
+    _SLASH_UNTIL = 0.0
+    log(f"SLASH mode off ({reason})")
+
+
+def choice_mode_active() -> bool:
+    """True while Ghostty choice-assist window is open."""
+    global _CHOICE_UNTIL
+    if _CHOICE_UNTIL <= 0:
+        return False
+    if time.monotonic() >= _CHOICE_UNTIL:
+        _CHOICE_UNTIL = 0.0
+        suppress_held_face_buttons("choice timeout")
+        log("CHOICE mode off (timeout)")
+        return False
+    if not is_ghostty_focused():
+        _CHOICE_UNTIL = 0.0
+        suppress_held_face_buttons("choice left Ghostty")
+        log("CHOICE mode off (left Ghostty)")
+        return False
+    return True
+
+
+def enter_choice_mode(*, refresh: bool = False) -> None:
+    global _CHOICE_UNTIL, _CHOICE_STICK_IGNORE_UNTIL
+    now = time.monotonic()
+    _CHOICE_UNTIL = now + CHOICE_MODE_S
+    if not refresh:
+        # First entry: drop slash (mutex), kill pending View→/, ignore R3 stick wobble.
+        cancel_pending_slash_arm("choice enter")
+        if slash_mode_active():
+            exit_slash_mode("choice enter")
+        suppress_held_face_buttons("choice enter")
+        _CHOICE_STICK_IGNORE_UNTIL = now + CHOICE_STICK_IGNORE_S
+    log(f"CHOICE mode {'refreshed' if refresh else 'on'} ({CHOICE_MODE_S:.0f}s)")
+
+
+def exit_choice_mode(reason: str) -> None:
+    global _CHOICE_UNTIL
+    if _CHOICE_UNTIL <= 0:
+        return
+    _CHOICE_UNTIL = 0.0
+    suppress_held_face_buttons(f"choice exit:{reason}")
+    log(f"CHOICE mode off ({reason})")
+
+
+def suppress_held_face_buttons(reason: str) -> None:
+    """Cancel in-flight B/X/Y so UP cannot leak Ctrl+U / Cmd+Enter / Esc across mode flips."""
+    for btn in (1, 2, 3):
+        if btn in _BTN_MODE_AT_PRESS and _BTN_MODE_AT_PRESS[btn] != "suppress":
+            _BTN_MODE_AT_PRESS[btn] = "suppress"
+            log(f"BTN {btn} suppress ({reason})")
+
+
+def cancel_pending_slash_arm(reason: str) -> None:
+    """Invalidate View→slash workers that have not typed '/' yet."""
+    global _SLASH_ARM_GEN
+    _SLASH_ARM_GEN += 1
+    log(f"SLASH arm canceled ({reason}) gen={_SLASH_ARM_GEN}")
+
 
 
 def scroll_wheel(lines: int) -> None:
@@ -303,6 +535,53 @@ def move_mouse(dx: int, dy: int, bounds: tuple[float, float, float, float]) -> N
 
 
 def run_action(label: str, argv: list[str]) -> None:
+    if argv == ["__click__"]:
+        log(f"ACTION {label} → click")
+        threading.Thread(target=click_mouse, daemon=True).start()
+        return
+    if argv == ["__slash__"]:
+        # Choice mode: View exits choice only (never type "/").
+        if choice_mode_active():
+            log(f"ACTION {label} → exit choice (View)")
+            exit_choice_mode("View")
+            return
+        # View toggle: off → type "/" + enter mode; on → Esc + leave mode.
+        if slash_mode_active():
+            log(f"ACTION {label} → escape (View toggle off)")
+            exit_slash_mode("View toggle")
+            threading.Thread(
+                target=lambda: subprocess.run(
+                    [INJECT_KEY, "escape"],
+                    check=False,
+                    timeout=3,
+                    capture_output=True,
+                    text=True,
+                ),
+                daemon=True,
+            ).start()
+            return
+        log(f"ACTION {label} → / + slash-mode (unicode, IME-safe)")
+        global _SLASH_ARM_GEN
+        _SLASH_ARM_GEN += 1
+        armed = _SLASH_ARM_GEN
+
+        def slash_worker(arm: int = armed) -> None:
+            # Abort if R3/choice (or another View) invalidated this arm before typing.
+            if arm != _SLASH_ARM_GEN or choice_mode_active():
+                log(f"SLASH arm {arm} aborted before /")
+                return
+            try:
+                tap_slash()
+            except Exception as exc:
+                log(f"  err: {exc}")
+                return
+            if arm != _SLASH_ARM_GEN or choice_mode_active():
+                log(f"SLASH arm {arm} aborted after / (stray slash possible)")
+                return
+            enter_slash_mode()
+
+        threading.Thread(target=slash_worker, daemon=True).start()
+        return
     log(f"ACTION {label} → {' '.join(os.path.basename(a) if i == 0 else a for i, a in enumerate(argv))}")
 
     def worker() -> None:
@@ -320,6 +599,62 @@ def run_action(label: str, argv: list[str]) -> None:
     threading.Thread(target=worker, daemon=True).start()
 
 
+def run_focus_sync(label: str, argv: list[str]) -> bool:
+    """Run focus script synchronously so frontmost matches before next key."""
+    log(f"ACTION {label} → {' '.join(os.path.basename(a) if i == 0 else a for i, a in enumerate(argv))} (sync)")
+    try:
+        result = subprocess.run(argv, check=False, timeout=3, capture_output=True, text=True)
+        if result.stdout:
+            for line in result.stdout.strip().splitlines():
+                log(f"  out: {line}")
+        if result.stderr:
+            for line in result.stderr.strip().splitlines():
+                log(f"  err: {line}")
+        return result.returncode == 0
+    except Exception as exc:
+        log(f"  err: {exc}")
+        return False
+
+
+# Menu/RB: Chrome CDP / automation often re-steals focus after a single activate.
+FOCUS_VERIFY_ATTEMPTS = 4
+FOCUS_VERIFY_GAP_S = 0.12
+
+
+def focus_target_bundle(label: str) -> str:
+    if label == "START":
+        return GHOSTTY_BUNDLE
+    if label == "RB":
+        return SAFARI_BUNDLE
+    return ""
+
+
+def focus_and_verify(label: str, argv: list[str]) -> bool:
+    """Activate target app and confirm frontmost; retry briefly against re-steal."""
+    target = focus_target_bundle(label)
+    if not target:
+        return run_focus_sync(label, argv)
+
+    for attempt in range(1, FOCUS_VERIFY_ATTEMPTS + 1):
+        ok = run_focus_sync(label, argv)
+        invalidate_frontmost_cache()
+        time.sleep(FOCUS_VERIFY_GAP_S)
+        invalidate_frontmost_cache()
+        actual = frontmost_bundle()
+        if actual == target:
+            assume_frontmost(target)
+            if attempt > 1:
+                log(f"FOCUS ok {label} after {attempt} tries → {actual}")
+            return True
+        log(
+            f"FOCUS miss {label} try {attempt}/{FOCUS_VERIFY_ATTEMPTS} "
+            f"want={target} got={actual or '?'} script_ok={ok}"
+        )
+    invalidate_frontmost_cache()
+    log(f"FOCUS FAILED {label} — another app may be re-stealing (e.g. Chrome CDP)")
+    return False
+
+
 def right_stick_deflected(sdl, gc) -> bool:
     rx = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTX) / 32768.0
     ry = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTY) / 32768.0
@@ -332,13 +667,202 @@ def try_fire_button(
     last_action: dict[int, float],
     b_down_at: dict[int, float],
     press_latched: set[int],
+    press_profile: dict[int, str],
     *,
     last_rstick_active_at: float = 0.0,
 ) -> None:
-    if btn not in BUTTON_MAP:
+    global _CHOICE_R3_LAST_AT
+    # Global focus keys (Menu / RB) — sync activate + verify frontmost.
+    if btn in GLOBAL_BUTTON_MAP:
+        label, argv = GLOBAL_BUTTON_MAP[btn]
+        now = time.monotonic()
+        if edge == "UP":
+            press_latched.discard(btn)
+            return
+        if edge != "DOWN":
+            return
+        if btn in press_latched:
+            return
+        last = last_action.get(btn, 0.0)
+        if now - last < DEBOUNCE_S:
+            return
+        press_latched.add(btn)
+        last_action[btn] = now
+        log(f"EVENT DOWN {label} (global)")
+        focus_and_verify(label, argv)
         return
-    label, argv = BUTTON_MAP[btn]
+
     now = time.monotonic()
+
+    # Lock profile at DOWN so UP uses the same mapping (Codex P2 mid-press focus switch).
+    if edge == "DOWN":
+        profile = active_profile()
+        if profile:
+            press_profile[btn] = profile
+        else:
+            press_profile.pop(btn, None)
+        # Lock assist mode at DOWN so UP cannot leak Ctrl+U / Backspace after timeout.
+        if profile == "ghostty" and btn in (1, 2, 3):
+            if choice_mode_active():
+                _BTN_MODE_AT_PRESS[btn] = "choice"
+            elif slash_mode_active():
+                _BTN_MODE_AT_PRESS[btn] = "slash"
+            else:
+                _BTN_MODE_AT_PRESS[btn] = "normal"
+    else:
+        profile = press_profile.pop(btn, None) or active_profile()
+
+    # View: short tap → slash; hold → choice (Xbox BLE R3 is unreliable).
+    if btn == SDL_BUTTON_BACK:
+        global _VIEW_DOWN_AT, _VIEW_HOLD_FIRED
+        if edge == "DOWN":
+            if profile != "ghostty":
+                return
+            if btn in press_latched:
+                return
+            last = last_action.get(btn, 0.0)
+            if now - last < DEBOUNCE_S:
+                return
+            press_latched.add(btn)
+            last_action[btn] = now
+            # Already in choice: tap exits immediately (no slash).
+            if choice_mode_active():
+                log("EVENT DOWN VIEW → exit choice")
+                exit_choice_mode("View")
+                _VIEW_HOLD_FIRED = True
+                _VIEW_DOWN_AT = 0.0
+                return
+            _VIEW_DOWN_AT = now
+            _VIEW_HOLD_FIRED = False
+            log("EVENT DOWN VIEW (armed short=slash / hold=choice)")
+            return
+        if edge == "UP":
+            press_latched.discard(btn)
+            if _VIEW_HOLD_FIRED:
+                log("EVENT UP VIEW (hold already handled)")
+                _VIEW_HOLD_FIRED = False
+                _VIEW_DOWN_AT = 0.0
+                return
+            _VIEW_DOWN_AT = 0.0
+            if profile == "ghostty":
+                log("EVENT UP VIEW → slash (short tap)")
+                run_action("VIEW", ["__slash__"])
+            return
+        return
+
+    # R3 → optional Choice Mode fallback (Ghostty only). Not in button maps.
+    if btn == SDL_BUTTON_RIGHTSTICK:
+        if edge == "UP":
+            press_latched.discard(btn)
+            return
+        if edge != "DOWN":
+            return
+        if profile != "ghostty":
+            return
+        if btn in press_latched:
+            return
+        if now - _CHOICE_R3_LAST_AT < CHOICE_R3_DEBOUNCE_S:
+            return
+        if now - last_action.get(btn, 0.0) < DEBOUNCE_S:
+            return
+        press_latched.add(btn)
+        last_action[btn] = now
+        _CHOICE_R3_LAST_AT = now
+        if choice_mode_active():
+            log("EVENT DOWN R3 → exit choice")
+            exit_choice_mode("R3 toggle")
+        else:
+            log("EVENT DOWN R3 → enter choice")
+            enter_choice_mode()
+        return
+
+    button_map = profile_button_map(profile)
+    if btn not in button_map:
+        if edge == "UP":
+            press_latched.discard(btn)
+            _BTN_MODE_AT_PRESS.pop(btn, None)
+        return
+    label, argv = button_map[btn]
+    locked_mode = _BTN_MODE_AT_PRESS.get(btn, "normal")
+
+    # Mode transition canceled this press — absorb UP/DOWN, never inject.
+    if profile == "ghostty" and locked_mode == "suppress":
+        if edge == "UP":
+            press_latched.discard(btn)
+            _BTN_MODE_AT_PRESS.pop(btn, None)
+            log(f"EVENT UP {label} suppressed (mode transition)")
+        elif edge == "DOWN":
+            press_latched.add(btn)
+        return
+
+    # Choice mode: swallow X (avoid Cmd+Enter); Y → Space; B → Esc.
+    if profile == "ghostty" and locked_mode == "choice":
+        if btn == 2:  # X
+            if edge == "UP":
+                press_latched.discard(btn)
+                _BTN_MODE_AT_PRESS.pop(btn, None)
+            elif edge == "DOWN":
+                press_latched.add(btn)
+                log("EVENT DOWN X swallowed (choice mode)")
+            return
+        if btn == 3:  # Y → Space on DOWN
+            if edge == "UP":
+                press_latched.discard(btn)
+                _BTN_MODE_AT_PRESS.pop(btn, None)
+                return
+            if edge != "DOWN":
+                return
+            if btn in press_latched:
+                return
+            last = last_action.get(btn, 0.0)
+            if now - last < DEBOUNCE_S:
+                return
+            press_latched.add(btn)
+            last_action[btn] = now
+            log("EVENT DOWN Y → space (choice mode)")
+            enter_choice_mode(refresh=True)
+            run_action("Y-SPACE", [INJECT_KEY, "space"])
+            return
+        if btn == 1:  # B → Esc on DOWN (BLE often drops UP)
+            if edge == "UP":
+                press_latched.discard(btn)
+                _BTN_MODE_AT_PRESS.pop(btn, None)
+                return
+            if edge != "DOWN":
+                return
+            if btn in press_latched:
+                return
+            last = last_action.get(btn, 0.0)
+            if now - last < DEBOUNCE_B_S:
+                return
+            press_latched.add(btn)
+            last_action[btn] = now
+            log("EVENT DOWN B → escape (choice mode)")
+            exit_choice_mode("B escape")
+            run_action("B-ESC", [INJECT_KEY, "escape"])
+            return
+
+    # Slash mode: B cancels menu (Esc) instead of Ctrl+U.
+    if profile == "ghostty" and btn == 1 and locked_mode == "slash":
+        if edge == "UP":
+            press_latched.discard(btn)
+            _BTN_MODE_AT_PRESS.pop(btn, None)
+        if edge != "UP":
+            if edge == "DOWN":
+                press_latched.add(btn)
+            return
+        held_ms = (now - b_down_at.get(btn, now)) * 1000
+        if held_ms < 40:
+            return
+        last = last_action.get(btn, 0.0)
+        if now - last < DEBOUNCE_B_S:
+            return
+        last_action[btn] = now
+        log("EVENT UP B → escape (slash mode)")
+        exit_slash_mode("B escape")
+        run_action("B-ESC", [INJECT_KEY, "escape"])
+        return
+
     if btn == 1:
         debounce = DEBOUNCE_B_S
     elif btn == 2:
@@ -351,9 +875,17 @@ def try_fire_button(
 
     if edge == "UP":
         press_latched.discard(btn)
+        _BTN_MODE_AT_PRESS.pop(btn, None)
 
-    if btn in FIRE_ON_RELEASE:
+    # Fire on release: Ghostty B/X (BLE), Safari X click (same BLE ghost while scrolling).
+    fire_on_release = (profile == "ghostty" and btn in FIRE_ON_RELEASE) or (
+        profile == "safari" and btn == 2
+    )
+    if fire_on_release:
         if edge != "UP":
+            # Still latch on DOWN so BLE repeats don't queue.
+            if edge == "DOWN":
+                press_latched.add(btn)
             return
         if btn == 2 and now - last_rstick_active_at < RSTICK_X_COOLDOWN_S:
             log(f"EVENT UP {label} suppressed (recent right stick)")
@@ -381,21 +913,38 @@ def try_fire_button(
     run_action(label, argv)
 
 
+
+
 def poll_a_enter(
     sdl,
     gc,
     prev_a: bool,
     last_a_at: list[float],
 ) -> bool:
-    """A → Enter via poll edge (BLE-friendly) + inline CGEvent."""
+    """A → Enter (Ghostty) or Space (Safari); ignored otherwise."""
     pressed = bool(sdl.SDL_GameControllerGetButton(gc, POLL_A_BUTTON))
     if pressed and not prev_a:
         now = time.monotonic()
         if now - last_a_at[0] >= A_DEBOUNCE_S:
-            last_a_at[0] = now
-            log("POLL A → enter")
-            threading.Thread(target=tap_enter, daemon=True).start()
+            profile = active_profile()
+            if profile == "ghostty":
+                last_a_at[0] = now
+                if choice_mode_active():
+                    enter_choice_mode(refresh=True)
+                    log("POLL A → enter (choice refresh)")
+                elif slash_mode_active():
+                    exit_slash_mode("A confirm")
+                    log("POLL A → enter")
+                else:
+                    log("POLL A → enter")
+                threading.Thread(target=tap_enter, daemon=True).start()
+            elif profile == "safari":
+                last_a_at[0] = now
+                log("POLL A → space")
+                threading.Thread(target=tap_space, daemon=True).start()
     return pressed
+
+
 
 
 def poll_dpad_latched(
@@ -424,7 +973,26 @@ def poll_dpad_tabs(
     prev_dpad: dict[int, bool],
     dpad_latched: set[int],
 ) -> None:
+    """Tab switch only when Ghostty is frontmost."""
+    if choice_mode_active():
+        # Latch held presses so exiting Choice mid-hold cannot fire tab switch.
+        for btn in DPAD_TAB_BUTTONS:
+            pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
+            if pressed:
+                dpad_latched.add(btn)
+            else:
+                dpad_latched.discard(btn)
+            prev_dpad[btn] = pressed
+        return
+    if not is_ghostty_focused():
+        for btn in DPAD_TAB_BUTTONS:
+            if not bool(sdl.SDL_GameControllerGetButton(gc, btn)):
+                dpad_latched.discard(btn)
+                prev_dpad[btn] = False
+        return
     poll_dpad_latched(sdl, gc, DPAD_TAB_BUTTONS, prev_dpad, dpad_latched)
+
+
 
 
 def poll_dpad_zoom(
@@ -434,6 +1002,16 @@ def poll_dpad_zoom(
     dpad_latched: set[int],
 ) -> None:
     """Zoom in/out only when Ghostty is frontmost."""
+    if choice_mode_active():
+        # Latch held presses so exiting Choice mid-hold cannot fire zoom.
+        for btn in DPAD_ZOOM_BUTTONS:
+            pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
+            if pressed:
+                dpad_latched.add(btn)
+            else:
+                dpad_latched.discard(btn)
+            prev_dpad[btn] = pressed
+        return
     if not is_ghostty_focused():
         for btn in DPAD_ZOOM_BUTTONS:
             if not bool(sdl.SDL_GameControllerGetButton(gc, btn)):
@@ -441,6 +1019,103 @@ def poll_dpad_zoom(
                 prev_dpad[btn] = False
         return
     poll_dpad_latched(sdl, gc, DPAD_ZOOM_BUTTONS, prev_dpad, dpad_latched)
+
+
+
+def poll_slash_nav(
+    sdl,
+    gc,
+    state: dict,
+) -> None:
+    """In slash mode, right stick Y → ↑/↓ (menu select); else no-op here."""
+    if not slash_mode_active():
+        state["slash_nav_dir"] = 0
+        return
+    raw_ry = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTY)
+    ay = -(raw_ry / 32768.0)
+    direction = 0
+    if ay >= SLASH_NAV_DEADZONE:
+        direction = 1  # up
+    elif ay <= -SLASH_NAV_DEADZONE:
+        direction = -1  # down
+    now = time.monotonic()
+    if direction == 0:
+        state["slash_nav_dir"] = 0
+        return
+    last_dir = state.get("slash_nav_dir", 0)
+    last_at = float(state.get("slash_nav_at", 0.0))
+    if direction != last_dir or (now - last_at) >= SLASH_NAV_COOLDOWN_S:
+        state["slash_nav_dir"] = direction
+        state["slash_nav_at"] = now
+        enter_slash_mode(refresh=True)
+        key = "up" if direction > 0 else "down"
+        label = "SLASH-UP" if direction > 0 else "SLASH-DOWN"
+        log(f"SLASH nav {key}")
+        run_action(label, [INJECT_KEY, key])
+
+
+def poll_choice_nav(
+    sdl,
+    gc,
+    state: dict,
+) -> None:
+    """In choice mode, right stick Y → ↑/↓; else no-op here."""
+    if not choice_mode_active():
+        state["choice_nav_dir"] = 0
+        return
+    now = time.monotonic()
+    if now < _CHOICE_STICK_IGNORE_UNTIL:
+        state["choice_nav_dir"] = 0
+        return
+    raw_ry = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTY)
+    ay = -(raw_ry / 32768.0)
+    direction = 0
+    if ay >= CHOICE_NAV_DEADZONE:
+        direction = 1  # up
+    elif ay <= -CHOICE_NAV_DEADZONE:
+        direction = -1  # down
+    if direction == 0:
+        state["choice_nav_dir"] = 0
+        return
+    last_dir = state.get("choice_nav_dir", 0)
+    last_at = float(state.get("choice_nav_at", 0.0))
+    if direction != last_dir or (now - last_at) >= CHOICE_NAV_COOLDOWN_S:
+        state["choice_nav_dir"] = direction
+        state["choice_nav_at"] = now
+        enter_choice_mode(refresh=True)
+        key = "up" if direction > 0 else "down"
+        label = "CHOICE-UP" if direction > 0 else "CHOICE-DOWN"
+        log(f"CHOICE nav {key}")
+        run_action(label, [INJECT_KEY, key])
+
+
+def poll_safari_triggers(
+    sdl,
+    gc,
+    prev_triggers: dict[int, bool],
+    trigger_latched: set[int],
+) -> None:
+    """LT/RT → seek left/right when Safari is frontmost."""
+    if not is_safari_focused():
+        for axis in SAFARI_TRIGGER_SEEK:
+            raw = sdl.SDL_GameControllerGetAxis(gc, axis)
+            pressed = (raw / 32767.0) >= TRIGGER_THRESHOLD
+            if not pressed:
+                trigger_latched.discard(axis)
+                prev_triggers[axis] = False
+        return
+    for axis, (label, argv) in SAFARI_TRIGGER_SEEK.items():
+        raw = sdl.SDL_GameControllerGetAxis(gc, axis)
+        pressed = (raw / 32767.0) >= TRIGGER_THRESHOLD
+        if pressed:
+            if axis not in trigger_latched:
+                trigger_latched.add(axis)
+                log(f"TRIGGER {label}")
+                run_action(label, argv)
+        else:
+            trigger_latched.discard(axis)
+        prev_triggers[axis] = pressed
+
 
 
 def open_first_controller(sdl) -> ctypes.c_void_p | None:
@@ -465,18 +1140,34 @@ def close_controller(sdl, gc) -> None:
 
 def log_mapping(sdl, gc) -> None:
     log(f"opened {controller_label(sdl, gc)}")
-    for btn, (label, argv) in BUTTON_MAP.items():
+    log("  [global]")
+    for _btn, (label, argv) in GLOBAL_BUTTON_MAP.items():
+        action = "focus-ghostty" if label == "START" else "focus-safari"
+        log(f"    {label} → {action}")
+    log("  [ghostty]")
+    for _btn, (label, argv) in GHOSTTY_BUTTON_MAP.items():
         action = argv[-1] if argv[-1] != INJECT_RCTRL else "rctrl"
-        if label == "START":
-            action = "focus-ghostty"
-        log(f"  {label} → {action}")
-    log("  A → enter (poll+inline CGEvent)")
+        log(f"    {label} → {action}")
+    log("    A → enter (poll+inline CGEvent)")
+    log("    VIEW tap → slash-mode (/ on, Esc off; R-stick↑↓, A confirm, B Esc, 8s)")
+    log(f"    VIEW hold ≥{CHOICE_VIEW_HOLD_S:.1f}s → choice-mode (R-stick↑↓, A confirm+refresh, B Esc, Y Space, {CHOICE_MODE_S:.0f}s; swallows X/D-pad)")
+    log("    R3 → choice-mode fallback only (often missing on Xbox BLE)")
     for _btn, (label, argv) in DPAD_TAB_BUTTONS.items():
-        log(f"  {label} → {argv[-1]} (Ghostty tab, once/press)")
+        log(f"    {label} → {argv[-1]} (tab, once/press, focused only)")
     for _btn, (label, argv) in DPAD_ZOOM_BUTTONS.items():
-        log(f"  {label} → {argv[-1]} (Ghostty zoom, once/press, focused only)")
+        log(f"    {label} → {argv[-1]} (zoom, once/press, focused only)")
+    log(f"    R-stick → scroll (max={int(RSTICK_SCROLL_MAX_LINES_S)} lines/s)")
+    log("  [safari]")
+    log("    A → space (play/pause)")
+    for _btn, (label, argv) in SAFARI_BUTTON_MAP.items():
+        action = "click" if argv == ["__click__"] else argv[-1]
+        log(f"    {label} → {action}")
+    for _axis, (label, argv) in SAFARI_TRIGGER_SEEK.items():
+        log(f"    {label} → {argv[-1]} (seek, once/press, focused only)")
+    log(f"    R-stick → scroll (max={int(RSTICK_SCROLL_MAX_LINES_S)} lines/s)")
     log(f"  L-stick → mouse (deadzone={STICK_DEADZONE}, max={int(STICK_MAX_SPEED_PX_S)}px/s, multi-display)")
-    log(f"  R-stick → scroll Ghostty (max={int(RSTICK_SCROLL_MAX_LINES_S)} lines/s; X btn unchanged)")
+
+
 
 
 def fresh_input_state() -> dict:
@@ -484,14 +1175,21 @@ def fresh_input_state() -> dict:
         "last_action": {},
         "b_down_at": {},
         "press_latched": set(),
+        "press_profile": {},
         "last_rstick_active_at": 0.0,
         "prev_poll": {btn: False for btn in POLL_BUTTONS},
         "prev_dpad": {
             btn: False for btn in {**DPAD_TAB_BUTTONS, **DPAD_ZOOM_BUTTONS}
         },
         "dpad_latched": set(),
+        "prev_triggers": {axis: False for axis in SAFARI_TRIGGER_SEEK},
+        "trigger_latched": set(),
         "prev_a": False,
         "last_a_at": [0.0],
+        "slash_nav_dir": 0,
+        "slash_nav_at": 0.0,
+        "choice_nav_dir": 0,
+        "choice_nav_at": 0.0,
     }
 
 
@@ -507,7 +1205,16 @@ def sync_pressed_state(sdl, gc, state: dict) -> None:
             state["dpad_latched"].add(btn)
         else:
             state["dpad_latched"].discard(btn)
+    for axis in SAFARI_TRIGGER_SEEK:
+        raw = sdl.SDL_GameControllerGetAxis(gc, axis)
+        pressed = (raw / 32767.0) >= TRIGGER_THRESHOLD
+        state["prev_triggers"][axis] = pressed
+        if pressed:
+            state["trigger_latched"].add(axis)
+        else:
+            state["trigger_latched"].discard(axis)
     state["press_latched"].clear()
+    state["press_profile"].clear()
     state["b_down_at"].clear()
 
 
@@ -544,11 +1251,11 @@ def main() -> int:
     last_stick_log = 0.0
 
     if gc:
-        for btn, (label, _) in BUTTON_MAP.items():
+        for btn, (label, _) in {**GLOBAL_BUTTON_MAP, **GHOSTTY_BUTTON_MAP, **SAFARI_BUTTON_MAP}.items():
             if sdl.SDL_GameControllerGetButton(gc, btn):
                 log(f"WARN {label} held at startup — release before testing")
 
-    log("ready — A=poll enter, D-pad=tabs+zoom, L-stick=mouse; hot-reconnect enabled")
+    log("ready — ghostty|safari + View tap=slash / hold=choice; hot-reconnect")
 
     def attach_controller(*, reason: str) -> None:
         nonlocal gc
@@ -591,6 +1298,7 @@ def main() -> int:
                 state["b_down_at"][btn] = time.monotonic()
                 try_fire_button(
                     btn, "DOWN", state["last_action"], state["b_down_at"], state["press_latched"],
+                    state["press_profile"],
                     last_rstick_active_at=state["last_rstick_active_at"],
                 )
             elif et == SDL_CONTROLLERBUTTONUP:
@@ -599,6 +1307,7 @@ def main() -> int:
                     continue
                 try_fire_button(
                     btn, "UP", state["last_action"], state["b_down_at"], state["press_latched"],
+                    state["press_profile"],
                     last_rstick_active_at=state["last_rstick_active_at"],
                 )
                 state["b_down_at"].pop(btn, None)
@@ -622,17 +1331,42 @@ def main() -> int:
 
         poll_dpad_tabs(sdl, gc, state["prev_dpad"], state["dpad_latched"])
         poll_dpad_zoom(sdl, gc, state["prev_dpad"], state["dpad_latched"])
+        poll_safari_triggers(sdl, gc, state["prev_triggers"], state["trigger_latched"])
+        poll_slash_nav(sdl, gc, state)
+        poll_choice_nav(sdl, gc, state)
         state["prev_a"] = poll_a_enter(sdl, gc, state["prev_a"], state["last_a_at"])
+
+        # View hold → choice (poll button still down past threshold).
+        global _VIEW_DOWN_AT, _VIEW_HOLD_FIRED
+        if _VIEW_DOWN_AT > 0 and not _VIEW_HOLD_FIRED:
+            if time.monotonic() - _VIEW_DOWN_AT >= CHOICE_VIEW_HOLD_S:
+                held = bool(sdl.SDL_GameControllerGetButton(gc, SDL_BUTTON_BACK))
+                if held and is_ghostty_focused():
+                    _VIEW_HOLD_FIRED = True
+                    _VIEW_DOWN_AT = 0.0
+                    log("VIEW hold → enter choice")
+                    enter_choice_mode()
+                elif not held:
+                    # Released between polls; short-tap path handled on UP.
+                    pass
 
         for btn in POLL_BUTTONS:
             pressed = bool(sdl.SDL_GameControllerGetButton(gc, btn))
             if pressed and not state["prev_poll"][btn]:
+                state["b_down_at"][btn] = time.monotonic()
                 try_fire_button(
                     btn, "DOWN", state["last_action"], state["b_down_at"], state["press_latched"],
+                    state["press_profile"],
                     last_rstick_active_at=state["last_rstick_active_at"],
                 )
             elif not pressed and state["prev_poll"][btn]:
+                try_fire_button(
+                    btn, "UP", state["last_action"], state["b_down_at"], state["press_latched"],
+                    state["press_profile"],
+                    last_rstick_active_at=state["last_rstick_active_at"],
+                )
                 state["press_latched"].discard(btn)
+                state["b_down_at"].pop(btn, None)
             state["prev_poll"][btn] = pressed
 
         raw_x = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_LEFTX)
@@ -648,7 +1382,10 @@ def main() -> int:
                 last_stick_log = now
                 log(f"STICK move dx={dx} dy={dy}")
 
-        if is_ghostty_focused():
+        # Right stick: slash/choice arrows take over; else scroll.
+        if slash_mode_active() or choice_mode_active():
+            pass
+        elif is_ghostty_focused() or is_safari_focused():
             raw_ry = sdl.SDL_GameControllerGetAxis(gc, SDL_AXIS_RIGHTY)
             ay = -(raw_ry / 32768.0)
             scroll_y = scroll_lines_delta(ay)
