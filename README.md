@@ -44,14 +44,10 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 
 ![VibePad features — controller mapping, workflow highlights, and use cases](assets/vibepad-use-cases-features.png)
 
-<!-- Suggested replacement / slice frames: see docs/IMAGE_PROMPTS.md
-![Hero — couch coding with Xbox + Ghostty](assets/vibepad-hero-couch.png)
-![Slice 01 — voice toggle LB](assets/slices/01-voice-lb.png)
-![Slice 02 — send with A](assets/slices/02-send-a.png)
-![Slice 03 — clear with B](assets/slices/03-clear-b.png)
-![Slice 04 — multi-monitor stick](assets/slices/04-mouse-stick.png)
-![Slice 05 — Safari rest mode](assets/slices/05-safari-rest.png)
-![Feature tour GIF](assets/vibepad-feature-tour.gif)
+<!-- Optional new frames after ChatGPT: see docs/IMAGE_PROMPTS.md
+![Hero](assets/vibepad-hero-couch.png)
+![Controls](assets/vibepad-controls-closeup.png)
+![Workflow](assets/vibepad-workflow-3step.png)
 -->
 
 ---
