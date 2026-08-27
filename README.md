@@ -7,6 +7,8 @@ Lie down. Talk. Send. Scroll. Keep shipping with Claude Code / Cursor CLI / Code
 [![Release](https://img.shields.io/github/v/release/DISSIDIA-986/VibePad)](https://github.com/DISSIDIA-986/VibePad/releases)
 **Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3 · **Team:** DISSIDIA (Cursor Calgary · Aug 2026)
 
+![VibePad hero — lie down, talk, ship](assets/vibepad-hero-couch.png)
+
 ![VibePad setup — hardware, software stack, and install checklist](assets/vibepad-setup-environment.png)
 
 ---
@@ -23,7 +25,7 @@ Lie down. Talk. Send. Scroll. Keep shipping with Claude Code / Cursor CLI / Code
 
 **Why it’s dramatically more engaging:** coding stops feeling like desk posture. You hold a familiar gamepad, toggle voice with **LB**, send prompts with **A**, clear mistakes with **B/Y**, jump tabs and zoom with the D-pad, aim with the left stick, and scroll long agent output with the right stick — then **RB** into Safari when you need a break.
 
-> **Demo without a controller on site:** this README + the mapping table + screenshots below are the walkthrough. The production daemon is already soak-tested on real hardware (see [Meet Me](#meet-me)).
+> **Demo without a controller on site:** this README + the mapping table + screenshots below are the walkthrough. The production daemon is used daily on real hardware (see [Meet Me](#meet-me)).
 
 ---
 
@@ -44,11 +46,9 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 
 ![VibePad features — controller mapping, workflow highlights, and use cases](assets/vibepad-use-cases-features.png)
 
-<!-- Optional new frames after ChatGPT: see docs/IMAGE_PROMPTS.md
-![Hero](assets/vibepad-hero-couch.png)
-![Controls](assets/vibepad-controls-closeup.png)
-![Workflow](assets/vibepad-workflow-3step.png)
--->
+![VibePad core controls — LB voice, A send, B clear, sticks, Menu](assets/vibepad-controls-closeup.png)
+
+![VibePad workflow — Voice → Send → Scroll](assets/vibepad-workflow-3step.png)
 
 ---
 
