@@ -39,7 +39,11 @@ https://github.com/DISSIDIA-986/VibePad
 
 ## Demo URL (optional)
 
-Leave blank unless you have a hosted page. The README is the controller-free demo walkthrough.
+```text
+https://dissidia-986.github.io/VibePad/
+```
+
+Local: open `index.html` or run `open index.html` from the repo root.
 
 ---
 

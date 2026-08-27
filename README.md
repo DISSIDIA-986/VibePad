@@ -5,7 +5,8 @@
 Lie down. Talk. Send. Scroll. Keep shipping with Claude Code / Cursor CLI / Codex — no desk required.
 
 [![Release](https://img.shields.io/github/v/release/DISSIDIA-986/VibePad)](https://github.com/DISSIDIA-986/VibePad/releases)
-**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3 · **Team:** DISSIDIA (Cursor Calgary · Aug 2026)
+**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3 · **Team:** DISSIDIA (Cursor Calgary · Aug 2026)  
+**Slides:** https://dissidia-986.github.io/VibePad/
 
 ![VibePad hero — lie down, talk, ship](assets/vibepad-hero-couch.png)
 
