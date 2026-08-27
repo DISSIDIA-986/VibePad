@@ -1,19 +1,35 @@
 # VibePad
 
-**Xbox controller → Ghostty terminal Vibe Coding on macOS** — lie down, keep coding.
+**Reinvent the boring macro-pad / desk-keyboard app** — Xbox controller → Ghostty **Vibe Coding** UX on macOS.
 
-Xbox 蓝牙手柄驱动 Ghostty + 豆包 IME，躺在床上做 Vibe Coding（Claude Code / Cursor CLI / Codex CLI）。
+Lie down. Talk. Send. Scroll. Keep shipping with Claude Code / Cursor CLI / Codex — no desk required.
 
 [![Release](https://img.shields.io/github/v/release/DISSIDIA-986/VibePad)](https://github.com/DISSIDIA-986/VibePad/releases)
-**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3
+**Repo:** https://github.com/DISSIDIA-986/VibePad · **Latest:** v0.1.3 · **Team:** DISSIDIA (Cursor Calgary · Aug 2026)
 
 ![VibePad setup — hardware, software stack, and install checklist](assets/vibepad-setup-environment.png)
 
 ---
 
+## Hackathon pitch
+
+**Prompt:** *Choose a boring, everyday application format and reinvent it with a dramatically more engaging visual design, user experience, or functionality.*
+
+| Boring everyday format | VibePad reinvention |
+|------------------------|---------------------|
+| Keyboard + mouse at a desk | **Couch / bed Vibe Coding** with an Xbox Bluetooth controller |
+| Stream Deck / macro pad walls | **Game-controller UX** tuned for agent CLIs (send, clear, voice, tabs, scroll) |
+| “Just remap buttons” utilities | **End-to-end workflow**: Ghostty + Doubao voice IME + multi-monitor pointer + Safari rest mode |
+
+**Why it’s dramatically more engaging:** coding stops feeling like desk posture. You hold a familiar gamepad, toggle voice with **LB**, send prompts with **A**, clear mistakes with **B/Y**, jump tabs and zoom with the D-pad, aim with the left stick, and scroll long agent output with the right stick — then **RB** into Safari when you need a break.
+
+> **Demo without a controller on site:** this README + the mapping table + screenshots below are the walkthrough. The production daemon is already soak-tested on real hardware (see [Meet Me](#meet-me)).
+
+---
+
 ## What it does
 
-VibePad maps an **Xbox Bluetooth controller** to keyboard, mouse, and scroll input while you use **Ghostty** with **Doubao IME** (豆包, Right Ctrl voice toggle).
+VibePad maps an **Xbox Bluetooth controller** to keyboard, mouse, and scroll input while you use **Ghostty** with **Doubao IME** (豆包 — Right Ctrl voice toggle).
 
 Built for **agent-style terminal workflows**: send prompts, clear the input line, switch tabs, move the cursor across monitors, scroll long CLI output — without a desk setup.
 
@@ -27,6 +43,16 @@ Xbox Controller (Bluetooth)
 Runs **headless** via `launchd` after one-time install — no Terminal window left open.
 
 ![VibePad features — controller mapping, workflow highlights, and use cases](assets/vibepad-use-cases-features.png)
+
+<!-- Suggested replacement / slice frames: see docs/IMAGE_PROMPTS.md
+![Hero — couch coding with Xbox + Ghostty](assets/vibepad-hero-couch.png)
+![Slice 01 — voice toggle LB](assets/slices/01-voice-lb.png)
+![Slice 02 — send with A](assets/slices/02-send-a.png)
+![Slice 03 — clear with B](assets/slices/03-clear-b.png)
+![Slice 04 — multi-monitor stick](assets/slices/04-mouse-stick.png)
+![Slice 05 — Safari rest mode](assets/slices/05-safari-rest.png)
+![Feature tour GIF](assets/vibepad-feature-tour.gif)
+-->
 
 ---
 
@@ -104,7 +130,7 @@ Menu-bar app (optional): `bin/build-app.sh && open VibePad.app`
 
 | Item | Detail |
 |------|--------|
-| macOS | 14+ (tested on macOS 27 beta, Mac Studio) |
+| macOS | 14+ (tested on macOS 27 beta, Mac Studio / Apple Silicon) |
 | Controller | Xbox Series X\|S / Xbox One via **Bluetooth** (USB not tested) |
 | Terminal | [Ghostty](https://ghostty.org) |
 | IME | Doubao (豆包), Toggle + Right Ctrl |
@@ -129,7 +155,7 @@ Menu-bar app (optional): `bin/build-app.sh && open VibePad.app`
 
 - **Production path is Python SDL spike**, not `vibepad run` / GameController CLI (GC returns 0 controllers in CLI on test hardware).
 - **YAML config** (`config/default.yaml`) does not yet list all spike mappings (LB, Menu, D-pad are spike-only).
-- **Right-stick scroll** only when Ghostty is the frontmost app.
+- **Right-stick scroll** only when Ghostty is the frontmost app (Safari scroll works when Safari is focused).
 - **X button** may ghost on BLE when moving right stick — mitigated with release-to-fire + cooldown.
 - **VibePad.app** does not replace the spike daemon for daily use yet.
 
@@ -143,7 +169,7 @@ bin/spike-lb-watch.sh      # foreground dev (blocked if launchd already runs)
 bin/build-icon.sh          # rebuild AppIcon.icns from icon-1024.png
 ```
 
-Docs: [Gate 0 checklist](docs/spike/GATE0.md) · [Phase 1 roadmap](docs/phases/PHASE1.md) · [Status](docs/STATUS.md) · [Tasks](docs/TASKS.md) · [Changelog](CHANGELOG.md)
+Docs: [Gate 0 checklist](docs/spike/GATE0.md) · [Phase 1 roadmap](docs/phases/PHASE1.md) · [Status](docs/STATUS.md) · [Tasks](docs/TASKS.md) · [Changelog](CHANGELOG.md) · [Image prompts](docs/IMAGE_PROMPTS.md) · [Submission copy](docs/SUBMISSION.md)
 
 Design notes: [docs/designs/vibepad.md](docs/designs/vibepad.md)
 
@@ -153,4 +179,19 @@ Design notes: [docs/designs/vibepad.md](docs/designs/vibepad.md)
 
 **Vibe Coding from bed:** external displays (including AR glasses), Xbox controller in hand, Ghostty running Claude Code / Cursor CLI / Codex — voice input via Doubao, send with A, clear mistakes with B/Y, switch agent tabs with D-pad ←/→, zoom terminal with D-pad ↑/↓, point with left stick, scroll agent output with right stick.
 
-Gate 0 passed · Phase 1 production daemon shipped · soak testing in progress.
+Gate 0 passed · Phase 1 production daemon shipped · daily soak use in progress.
+
+---
+
+## Meet Me
+
+**Yupo (Jason) Niu** — AI / Full-Stack Engineer · team **DISSIDIA**
+
+- **GitHub:** [DISSIDIA-986](https://github.com/DISSIDIA-986)
+- **Portfolio:** [portfolio.dissidia.tech](https://portfolio.dissidia.tech)
+- **Focus:** LLM, RAG, agentic systems · 17 years shipping production software
+- **Based in:** Calgary, Canada · open to full-time (Calgary or remote Canada)
+
+I built VibePad so **Vibe Coding** works the way I actually live: reclined, voice-first, controller in hand, agent CLIs on Ghostty — not chained to a desk keyboard. This repo is the working daemon I use day to day; tonight’s Cursor Calgary entry packages that reinvention for AI screening and judges.
+
+**Volunteer / share notes (no controller on site):** walk the [Hackathon pitch](#hackathon-pitch) → show the two feature images → skim the [mapping table](#controller-mapping-verified-v013) as the “live demo.” Offer the public repo link for clone + Accessibility setup if anyone wants to try later with their own Xbox pad.
