@@ -43,7 +43,7 @@ https://github.com/DISSIDIA-986/VibePad
 https://dissidia-986.github.io/VibePad/
 ```
 
-Local: open `index.html` or run `open index.html` from the repo root.
+Fullscreen image deck (5 slides, no text). Keys: ← → Space · `F` fullscreen.
 
 ---
 

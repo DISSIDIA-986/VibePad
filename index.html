@@ -3,219 +3,86 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VibePad — Cursor Calgary</title>
+  <title>VibePad</title>
   <style>
-    :root {
-      --bg: #e8f0fa;
-      --ink: #1a2744;
-      --muted: #4a5d7a;
-      --accent: #5b6cff;
-      --card: rgba(255, 255, 255, 0.72);
-    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100%;
-      background: radial-gradient(1200px 800px at 20% 0%, #dce9ff 0%, var(--bg) 55%, #f7f3ff 100%);
-      color: var(--ink);
-      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      width: 100%;
+      background: #0b1020;
       overflow: hidden;
+      cursor: default;
+      user-select: none;
     }
     .deck { height: 100%; width: 100%; position: relative; }
     .slide {
       position: absolute;
       inset: 0;
       display: none;
-      padding: clamp(1rem, 3vw, 2.5rem);
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 1rem;
-      animation: fade .28s ease;
+      background: #0b1020;
     }
-    .slide.active { display: flex; }
-    @keyframes fade {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: none; }
-    }
-    .slide.title-slide {
-      text-align: center;
-      gap: 1.25rem;
-    }
-    .eyebrow {
-      font-size: .85rem;
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    h1 {
-      font-size: clamp(2.2rem, 6vw, 4.2rem);
-      line-height: 1.05;
-      font-weight: 800;
-      background: linear-gradient(120deg, #5b6cff, #7a4dff 45%, #3d8bfd);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-    .tagline {
-      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
-      color: var(--muted);
-      max-width: 28ch;
-    }
-    .bullets {
-      list-style: none;
-      text-align: left;
-      max-width: 40rem;
-      display: grid;
-      gap: .7rem;
-      font-size: clamp(1rem, 2.2vw, 1.35rem);
-    }
-    .bullets li {
-      background: var(--card);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,.8);
-      border-radius: 14px;
-      padding: .85rem 1.1rem;
-      box-shadow: 0 10px 30px rgba(40, 70, 120, .08);
-    }
-    .frame {
-      width: min(96vw, 1200px);
-      height: min(78vh, 720px);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow: 0 24px 60px rgba(30, 50, 90, .22);
-      background: #fff;
-      border: 1px solid rgba(255,255,255,.9);
-    }
-    .frame img {
+    .slide.active { display: block; }
+    .slide img {
       width: 100%;
       height: 100%;
-      object-fit: contain;
-      background: #f4f7fc;
+      object-fit: cover;
+      object-position: center;
       display: block;
     }
-    .caption {
-      font-size: clamp(.95rem, 1.8vw, 1.15rem);
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .nav {
+    .chrome {
       position: fixed;
-      left: 0; right: 0; bottom: 0;
+      inset: auto 0 0 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: .75rem 1.25rem;
+      padding: .6rem 1rem;
       pointer-events: none;
-      z-index: 10;
+      z-index: 5;
+      background: linear-gradient(transparent, rgba(0,0,0,.35));
     }
-    .nav button {
+    .chrome button {
       pointer-events: auto;
       border: 0;
-      background: rgba(255,255,255,.85);
-      color: var(--ink);
-      font: inherit;
-      font-weight: 700;
-      padding: .55rem 1rem;
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      font: 600 0.9rem/1 system-ui, sans-serif;
+      padding: .45rem .85rem;
       border-radius: 999px;
       cursor: pointer;
-      box-shadow: 0 8px 20px rgba(30,50,90,.12);
+      backdrop-filter: blur(6px);
     }
-    .nav button:disabled { opacity: .35; cursor: default; }
-    .progress {
-      pointer-events: none;
-      color: var(--muted);
-      font-size: .9rem;
-      font-weight: 600;
-    }
-    .footer-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .75rem;
-      justify-content: center;
-      margin-top: .5rem;
-    }
-    .footer-links a {
-      color: var(--accent);
-      font-weight: 700;
-      text-decoration: none;
-      background: var(--card);
-      padding: .55rem 1rem;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.85);
-    }
-    .hint { font-size: .85rem; color: var(--muted); margin-top: .25rem; }
-    @media (max-width: 700px) {
-      .frame { height: min(62vh, 520px); }
+    .chrome button:disabled { opacity: .25; cursor: default; }
+    .chrome .progress {
+      color: rgba(255,255,255,.8);
+      font: 600 0.85rem/1 system-ui, sans-serif;
+      letter-spacing: .04em;
     }
   </style>
 </head>
 <body>
-  <main class="deck" id="deck" aria-live="polite">
-
-    <section class="slide title-slide active" data-slide>
-      <p class="eyebrow">Cursor Calgary · Team DISSIDIA</p>
-      <h1>VibePad</h1>
-      <p class="tagline">Reinvent the boring macro-pad — couch-first Vibe Coding on macOS.</p>
-      <p class="hint">← → or Space · click edges</p>
+  <main class="deck" id="deck">
+    <!-- 3-min story order: hook → dual-screen → controls → loop → overview -->
+    <section class="slide active" data-slide>
+      <img src="assets/vibepad-hero-couch.png" alt="" />
     </section>
-
     <section class="slide" data-slide>
-      <p class="eyebrow">The prompt</p>
-      <ul class="bullets">
-        <li>Boring format: macro-pad / desk keyboard remapper</li>
-        <li>Reinvented UX: Xbox controller + Doubao voice + Ghostty agents</li>
-        <li>Lie down. Talk. Send. Scroll. Ship.</li>
-      </ul>
+      <img src="assets/vibepad-learn-build-couch.png" alt="" />
     </section>
-
     <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-hero-couch.png" alt="VibePad hero — lie down, talk, ship" /></div>
-      <p class="caption">Lie down. Talk. Ship.</p>
+      <img src="assets/vibepad-controls-closeup.png" alt="" />
     </section>
-
     <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-learn-build-couch.png" alt="Learn in Safari, build in Ghostty" /></div>
-      <p class="caption">Learn in Safari. Build in Ghostty. Stay on the couch.</p>
+      <img src="assets/vibepad-workflow-3step.png" alt="" />
     </section>
-
     <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-controls-closeup.png" alt="Core controller mappings" /></div>
-      <p class="caption">Six essential actions — voice, send, clear, mouse, scroll, focus</p>
+      <img src="assets/vibepad-use-cases-features.png" alt="" />
     </section>
-
-    <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-workflow-3step.png" alt="Voice send scroll loop" /></div>
-      <p class="caption">Vibe Coding loop: Voice → Send → Scroll</p>
-    </section>
-
-    <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-use-cases-features.png" alt="Use cases and features" /></div>
-      <p class="caption">Built for Claude Code / Cursor CLI / Codex</p>
-    </section>
-
-    <section class="slide" data-slide>
-      <div class="frame"><img src="assets/vibepad-setup-environment.png" alt="Setup and environment" /></div>
-      <p class="caption">launchd daemon · Accessibility · Ghostty + Doubao</p>
-    </section>
-
-    <section class="slide title-slide" data-slide>
-      <p class="eyebrow">Try it / follow up</p>
-      <h1 style="font-size:clamp(1.8rem,4.5vw,3rem)">Public repo</h1>
-      <div class="footer-links">
-        <a href="https://github.com/DISSIDIA-986/VibePad" target="_blank" rel="noopener">github.com/DISSIDIA-986/VibePad</a>
-        <a href="https://portfolio.dissidia.tech" target="_blank" rel="noopener">portfolio.dissidia.tech</a>
-      </div>
-      <p class="tagline" style="margin-top:1rem">Yupo (Jason) Niu · DISSIDIA</p>
-      <p class="hint">No controller on site? This deck + README is the demo.</p>
-    </section>
-
   </main>
 
-  <div class="nav">
-    <button type="button" id="prev" aria-label="Previous slide">← Prev</button>
-    <span class="progress" id="progress">1 / 1</span>
-    <button type="button" id="next" aria-label="Next slide">Next →</button>
+  <div class="chrome">
+    <button type="button" id="prev" aria-label="Previous">←</button>
+    <span class="progress" id="progress">1 / 5</span>
+    <button type="button" id="next" aria-label="Next">→</button>
   </div>
 
   <script>
@@ -234,25 +101,29 @@
       history.replaceState(null, "", `#${i + 1}`);
     }
 
-    prev.addEventListener("click", () => show(i - 1));
-    next.addEventListener("click", () => show(i + 1));
+    prev.addEventListener("click", (e) => { e.stopPropagation(); show(i - 1); });
+    next.addEventListener("click", (e) => { e.stopPropagation(); show(i + 1); });
 
     window.addEventListener("keydown", (e) => {
-      if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(e.key)) {
+      if (["ArrowRight", "ArrowDown", " ", "PageDown", "Enter"].includes(e.key)) {
         e.preventDefault();
         show(i + 1);
-      } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(e.key)) {
+      } else if (["ArrowLeft", "ArrowUp", "PageUp", "Backspace"].includes(e.key)) {
         e.preventDefault();
         show(i - 1);
       } else if (e.key === "Home") show(0);
       else if (e.key === "End") show(slides.length - 1);
+      else if (e.key.toLowerCase() === "f") {
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
+        else document.exitFullscreen?.();
+      }
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target.closest("a, button")) return;
+      if (e.target.closest("button")) return;
       const x = e.clientX / window.innerWidth;
-      if (x > 0.66) show(i + 1);
-      else if (x < 0.33) show(i - 1);
+      if (x >= 0.5) show(i + 1);
+      else show(i - 1);
     });
 
     const hash = parseInt(location.hash.slice(1), 10);
