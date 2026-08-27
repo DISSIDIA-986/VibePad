@@ -2,17 +2,16 @@
 
 ## Status (2026-08-26)
 
-All **5** submit screenshots are in `assets/`:
+| File | Role |
+|------|------|
+| `vibepad-hero-couch.png` | Hero |
+| `vibepad-learn-build-couch.png` | Dual-screen story: Learn in Safari · Build in Ghostty · Stay on the couch |
+| `vibepad-controls-closeup.png` | Core controls |
+| `vibepad-workflow-3step.png` | Voice → Send → Scroll |
+| `vibepad-setup-environment.png` | Setup (README; optional for hub) |
+| `vibepad-use-cases-features.png` | Features overview |
 
-| # | File | Status |
-|---|------|--------|
-| 1 | `vibepad-hero-couch.png` | ✅ |
-| 2 | `vibepad-controls-closeup.png` | ✅ |
-| 3 | `vibepad-workflow-3step.png` | ✅ |
-| 4 | `vibepad-setup-environment.png` | ✅ (earlier) |
-| 5 | `vibepad-use-cases-features.png` | ✅ (earlier) |
-
-No more images required for submit. Optional GIF frames are deferred.
+Hub upload uses **5** shots — see `docs/SUBMISSION.md` (setup dropped from hub set in favor of dual-screen story).
 
 ## Note on generated caption accuracy
 
