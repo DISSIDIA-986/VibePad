@@ -9,6 +9,8 @@ Lie down. Talk. Send. Scroll. Keep shipping with Claude Code / Cursor CLI / Code
 
 ![VibePad hero — lie down, talk, ship](assets/vibepad-hero-couch.png)
 
+![VibePad dual-screen — Learn in Safari. Build in Ghostty. Stay on the couch.](assets/vibepad-learn-build-couch.png)
+
 ![VibePad setup — hardware, software stack, and install checklist](assets/vibepad-setup-environment.png)
 
 ---

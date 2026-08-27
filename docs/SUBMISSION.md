@@ -45,21 +45,23 @@ Leave blank unless you have a hosted page. The README is the controller-free dem
 
 ## Screenshots (up to 5) — upload in this order
 
-From the repo `assets/` folder (absolute paths if the hub needs files from disk):
+From the repo `assets/` folder:
 
 1. `assets/vibepad-hero-couch.png` — hero story  
-2. `assets/vibepad-controls-closeup.png` — core controls  
-3. `assets/vibepad-workflow-3step.png` — Voice → Send → Scroll  
-4. `assets/vibepad-setup-environment.png` — setup  
+2. `assets/vibepad-learn-build-couch.png` — Learn in Safari · Build in Ghostty · Stay on the couch  
+3. `assets/vibepad-controls-closeup.png` — core controls  
+4. `assets/vibepad-workflow-3step.png` — Voice → Send → Scroll  
 5. `assets/vibepad-use-cases-features.png` — features overview  
+
+(`vibepad-setup-environment.png` stays in the README; skip it in the hub upload to keep the 5-slot story set.)
 
 On disk (this machine):
 
 ```text
 /Users/niuyp/Documents/github.com/VibePad/assets/vibepad-hero-couch.png
+/Users/niuyp/Documents/github.com/VibePad/assets/vibepad-learn-build-couch.png
 /Users/niuyp/Documents/github.com/VibePad/assets/vibepad-controls-closeup.png
 /Users/niuyp/Documents/github.com/VibePad/assets/vibepad-workflow-3step.png
-/Users/niuyp/Documents/github.com/VibePad/assets/vibepad-setup-environment.png
 /Users/niuyp/Documents/github.com/VibePad/assets/vibepad-use-cases-features.png
 ```
 
@@ -68,7 +70,7 @@ On disk (this machine):
 ## 60-second volunteer share outline (English)
 
 1. **Prompt fit (10s):** “Boring app = desk keyboard / macro pad. We reinvent it as Xbox-controller Vibe Coding.”
-2. **What it does (20s):** Show hero → controls → workflow images; point at LB / A / sticks.
+2. **What it does (20s):** Show dual-screen couch shot (Safari + Ghostty) → controls → workflow.
 3. **Proof (15s):** “Public repo, launchd daemon, Gate 0 passed, I’ve been using it daily.”
 4. **No controller tonight (10s):** “Demo is README + screenshots; happy to help anyone clone later.”
 5. **Close (5s):** Repo link + Meet Me / portfolio if asked.
