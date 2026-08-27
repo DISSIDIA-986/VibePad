@@ -66,7 +66,8 @@ Runs **headless** via `launchd` after one-time install — no Terminal window le
 | **X** | ⌘Enter | Fires on **release**; Ghostty fullscreen |
 | **Y** | Backspace | Delete character |
 | **Menu (Start)** | Focus Ghostty | Global — any frontmost app |
-| **View (Back)** | Toggle slash mode | Ghostty: `/` on, Esc off; R-stick ↑↓, A confirm, B Esc (8s) |
+| **View (Back)** short tap | Toggle slash mode | Ghostty: `/` on, Esc off; R-stick ↑↓, A confirm, B Esc (~8s) |
+| **View (Back)** hold ≥0.5s | Toggle choice mode | Ghostty CLI multi-choice: R-stick ↑↓, A/B/Y/Space (~6s) |
 | **RB** | Focus Safari | Global — switch to video rest |
 | **D-pad ← / →** | Previous / next tab | ⌘⇧[ / ⌘⇧] |
 | **D-pad ↑ / ↓** | Font size zoom | ⌘= / ⌘− — Ghostty focused only |
@@ -130,7 +131,7 @@ Menu-bar app (optional): `bin/build-app.sh && open VibePad.app`
 
 | Item | Detail |
 |------|--------|
-| macOS | 14+ (tested on macOS 27 beta, Mac Studio / Apple Silicon) |
+| macOS | 14+ (tested on macOS 27 beta, Apple Silicon) |
 | Controller | Xbox Series X\|S / Xbox One via **Bluetooth** (USB not tested) |
 | Terminal | [Ghostty](https://ghostty.org) |
 | IME | Doubao (豆包), Toggle + Right Ctrl |
@@ -155,7 +156,7 @@ Menu-bar app (optional): `bin/build-app.sh && open VibePad.app`
 
 - **Production path is Python SDL spike**, not `vibepad run` / GameController CLI (GC returns 0 controllers in CLI on test hardware).
 - **YAML config** (`config/default.yaml`) does not yet list all spike mappings (LB, Menu, D-pad are spike-only).
-- **Right-stick scroll** only when Ghostty is the frontmost app (Safari scroll works when Safari is focused).
+- **Right-stick scroll** when Ghostty *or* Safari is frontmost (ignored in other apps).
 - **X button** may ghost on BLE when moving right stick — mitigated with release-to-fire + cooldown.
 - **VibePad.app** does not replace the spike daemon for daily use yet.
 
@@ -179,7 +180,7 @@ Design notes: [docs/designs/vibepad.md](docs/designs/vibepad.md)
 
 **Vibe Coding from bed:** external displays (including AR glasses), Xbox controller in hand, Ghostty running Claude Code / Cursor CLI / Codex — voice input via Doubao, send with A, clear mistakes with B/Y, switch agent tabs with D-pad ←/→, zoom terminal with D-pad ↑/↓, point with left stick, scroll agent output with right stick.
 
-Gate 0 passed · Phase 1 production daemon shipped · daily soak use in progress.
+Gate 0 passed · Phase 1 production daemon shipped · used daily in personal soak testing.
 
 ---
 

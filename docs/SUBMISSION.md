@@ -21,10 +21,10 @@ VibePad
 ```text
 VibePad reinvents the everyday macro-pad / remapper “app” (Stream Deck–style button walls + desk keyboard) as a couch-first controller UX for agent coding on macOS.
 
-An Xbox Bluetooth controller drives Ghostty + Doubao voice IME: LB toggles voice, A sends to Claude Code / Cursor CLI / Codex, B/Y clear mistakes, D-pad switches tabs and zooms, sticks move the mouse and scroll agent output, RB jumps to Safari for a break. Production daemon runs headless via launchd; Gate 0 mappings verified and soak-tested in daily use.
+An Xbox Bluetooth controller drives Ghostty + Doubao voice IME: LB toggles voice, A sends to Claude Code / Cursor CLI / Codex, B/Y clear mistakes, D-pad switches tabs and zooms, sticks move the mouse and scroll agent output, RB jumps to Safari for a break. Production daemon runs headless via launchd; Gate 0 mappings verified; used daily in personal soak testing.
 
-Boring format: keyboard-bound coding at a desk.
-Reinvented UX: game-controller Vibe Coding from bed or couch — no desk required.
+Boring format: macro-pad / keyboard remapper for coding shortcuts.
+Reinvented UX: controller-first Vibe Coding from bed or couch — no desk required.
 ```
 
 ---
