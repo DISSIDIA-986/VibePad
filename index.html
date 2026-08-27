@@ -11,7 +11,7 @@
       width: 100%;
       background: #0b1020;
       overflow: hidden;
-      cursor: default;
+      cursor: none;
       user-select: none;
     }
     .deck { height: 100%; width: 100%; position: relative; }
@@ -29,39 +29,11 @@
       object-position: center;
       display: block;
     }
-    .chrome {
-      position: fixed;
-      inset: auto 0 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: .6rem 1rem;
-      pointer-events: none;
-      z-index: 5;
-      background: linear-gradient(transparent, rgba(0,0,0,.35));
-    }
-    .chrome button {
-      pointer-events: auto;
-      border: 0;
-      background: rgba(255,255,255,.14);
-      color: #fff;
-      font: 600 0.9rem/1 system-ui, sans-serif;
-      padding: .45rem .85rem;
-      border-radius: 999px;
-      cursor: pointer;
-      backdrop-filter: blur(6px);
-    }
-    .chrome button:disabled { opacity: .25; cursor: default; }
-    .chrome .progress {
-      color: rgba(255,255,255,.8);
-      font: 600 0.85rem/1 system-ui, sans-serif;
-      letter-spacing: .04em;
-    }
   </style>
 </head>
 <body>
   <main class="deck" id="deck">
-    <!-- 3-min story order: hook → dual-screen → controls → loop → overview -->
+    <!-- ~3 min: hook → dual-screen → controls → loop → overview -->
     <section class="slide active" data-slide>
       <img src="assets/vibepad-hero-couch.png" alt="" />
     </section>
@@ -79,30 +51,16 @@
     </section>
   </main>
 
-  <div class="chrome">
-    <button type="button" id="prev" aria-label="Previous">←</button>
-    <span class="progress" id="progress">1 / 5</span>
-    <button type="button" id="next" aria-label="Next">→</button>
-  </div>
-
   <script>
     const slides = [...document.querySelectorAll("[data-slide]")];
     let i = 0;
-    const prev = document.getElementById("prev");
-    const next = document.getElementById("next");
-    const progress = document.getElementById("progress");
 
     function show(n) {
       i = Math.max(0, Math.min(slides.length - 1, n));
       slides.forEach((s, idx) => s.classList.toggle("active", idx === i));
-      prev.disabled = i === 0;
-      next.disabled = i === slides.length - 1;
-      progress.textContent = `${i + 1} / ${slides.length}`;
       history.replaceState(null, "", `#${i + 1}`);
+      document.title = `VibePad ${i + 1}/${slides.length}`;
     }
-
-    prev.addEventListener("click", (e) => { e.stopPropagation(); show(i - 1); });
-    next.addEventListener("click", (e) => { e.stopPropagation(); show(i + 1); });
 
     window.addEventListener("keydown", (e) => {
       if (["ArrowRight", "ArrowDown", " ", "PageDown", "Enter"].includes(e.key)) {
@@ -120,9 +78,7 @@
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target.closest("button")) return;
-      const x = e.clientX / window.innerWidth;
-      if (x >= 0.5) show(i + 1);
+      if (e.clientX / window.innerWidth >= 0.5) show(i + 1);
       else show(i - 1);
     });
 
